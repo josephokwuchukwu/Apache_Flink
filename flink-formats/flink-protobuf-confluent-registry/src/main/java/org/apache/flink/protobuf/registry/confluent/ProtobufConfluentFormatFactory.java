@@ -36,9 +36,6 @@ import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-
 import java.util.Set;
 
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.URL;
@@ -59,8 +56,9 @@ public class ProtobufConfluentFormatFactory
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
         String schemaRegistryURL = formatOptions.get(URL);
-        SchemaRegistryClient schemaRegistryClient =
-                ProtobufConfluentFormatFactoryUtils.createCachedSchemaRegistryClient(formatOptions);
+        SchemaRegistryClientProvider schemaRegistryClientProvider =
+                ProtobufConfluentFormatFactoryUtils.createCachedSchemaRegistryClientProvider(
+                        formatOptions);
 
         return new ProjectableDecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -72,7 +70,7 @@ public class ProtobufConfluentFormatFactory
                         context,
                         producedDataType,
                         projections,
-                        schemaRegistryClient,
+                        schemaRegistryClientProvider,
                         schemaRegistryURL,
                         formatOptions);
             }
@@ -92,15 +90,20 @@ public class ProtobufConfluentFormatFactory
                 formatOptions, IDENTIFIER);
 
         String schemaRegistryURL = formatOptions.get(URL);
-        CachedSchemaRegistryClient schemaRegistryClient =
-                ProtobufConfluentFormatFactoryUtils.createCachedSchemaRegistryClient(formatOptions);
+        SchemaRegistryClientProviders.CachedSchemaRegistryClientProvider
+                schemaRegistryClientProvider =
+                        ProtobufConfluentFormatFactoryUtils
+                                .createCachedSchemaRegistryClientProvider(formatOptions);
 
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
             public SerializationSchema<RowData> createRuntimeEncoder(
                     DynamicTableSink.Context context, DataType consumedDataType) {
                 return ProtobufConfluentFormatFactoryUtils.createDynamicSerializationSchema(
-                        consumedDataType, schemaRegistryClient, schemaRegistryURL, formatOptions);
+                        consumedDataType,
+                        schemaRegistryClientProvider,
+                        schemaRegistryURL,
+                        formatOptions);
             }
 
             @Override

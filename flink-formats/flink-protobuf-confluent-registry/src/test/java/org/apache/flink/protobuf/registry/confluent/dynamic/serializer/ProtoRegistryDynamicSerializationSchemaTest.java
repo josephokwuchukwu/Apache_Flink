@@ -18,6 +18,7 @@
 
 package org.apache.flink.protobuf.registry.confluent.dynamic.serializer;
 
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProviders;
 import org.apache.flink.protobuf.registry.confluent.TestUtils;
 import org.apache.flink.table.data.GenericArrayData;
 import org.apache.flink.table.data.GenericMapData;
@@ -56,11 +57,16 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
 
     private MockSchemaRegistryClient mockSchemaRegistryClient;
     private String className;
+    private SchemaRegistryClientProviders.MockSchemaRegistryClientProvider
+            mockSchemaRegistryClientProvider;
 
     @BeforeEach
     public void setup() {
         mockSchemaRegistryClient = new MockSchemaRegistryClient();
         className = TestUtils.DEFAULT_CLASS_NAME + UUID.randomUUID().toString().replace("-", "");
+        mockSchemaRegistryClientProvider =
+                new SchemaRegistryClientProviders.MockSchemaRegistryClientProvider(
+                        mockSchemaRegistryClient);
     }
 
     @Test
@@ -80,7 +86,7 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL);
         protoRegistryDynamicSerializationSchema.open(null);
 
@@ -137,7 +143,7 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL);
         protoRegistryDynamicSerializationSchema.open(null);
 
@@ -176,7 +182,7 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL);
         protoRegistryDynamicSerializationSchema.open(null);
 
@@ -221,7 +227,7 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL);
         protoRegistryDynamicSerializationSchema.open(null);
 
@@ -305,7 +311,7 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL);
         protoRegistryDynamicSerializationSchema.open(null);
 

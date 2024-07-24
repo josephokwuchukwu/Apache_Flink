@@ -23,6 +23,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatFactoryUtils;
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProviders;
 import org.apache.flink.protobuf.registry.confluent.dynamic.deserializer.ProtoRegistryDynamicDeserializationSchema;
 import org.apache.flink.protobuf.registry.confluent.dynamic.serializer.ProtoRegistryDynamicSerializationSchema;
 import org.apache.flink.table.connector.ChangelogMode;
@@ -39,9 +40,6 @@ import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.RowKind;
 
-import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
-
 import java.util.Set;
 
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.URL;
@@ -57,8 +55,10 @@ public class ProtobufConfluentDebeziumFactory
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
         String schemaRegistryURL = formatOptions.get(URL);
-        SchemaRegistryClient schemaRegistryClient =
-                ProtobufConfluentFormatFactoryUtils.createCachedSchemaRegistryClient(formatOptions);
+        SchemaRegistryClientProviders.CachedSchemaRegistryClientProvider
+                schemaRegistryClientProvider =
+                        ProtobufConfluentFormatFactoryUtils
+                                .createCachedSchemaRegistryClientProvider(formatOptions);
 
         return new ProjectableDecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -71,7 +71,7 @@ public class ProtobufConfluentDebeziumFactory
                                 context,
                                 producedDataType,
                                 projections,
-                                schemaRegistryClient,
+                                schemaRegistryClientProvider,
                                 schemaRegistryURL,
                                 formatOptions);
                 return new ProtobufConfluentDebeziumDeserializationSchema(wrappedDeser);
@@ -97,8 +97,10 @@ public class ProtobufConfluentDebeziumFactory
                 formatOptions, IDENTIFIER);
 
         String schemaRegistryURL = formatOptions.get(URL);
-        CachedSchemaRegistryClient schemaRegistryClient =
-                ProtobufConfluentFormatFactoryUtils.createCachedSchemaRegistryClient(formatOptions);
+        SchemaRegistryClientProviders.CachedSchemaRegistryClientProvider
+                schemaRegistryClientProvider =
+                        ProtobufConfluentFormatFactoryUtils
+                                .createCachedSchemaRegistryClientProvider(formatOptions);
 
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
@@ -107,7 +109,7 @@ public class ProtobufConfluentDebeziumFactory
                 ProtoRegistryDynamicSerializationSchema wrappedSer =
                         ProtobufConfluentFormatFactoryUtils.createDynamicSerializationSchema(
                                 consumedDataType,
-                                schemaRegistryClient,
+                                schemaRegistryClientProvider,
                                 schemaRegistryURL,
                                 formatOptions);
                 return new ProtobufConfluentDebeziumSerializationSchema(wrappedSer);

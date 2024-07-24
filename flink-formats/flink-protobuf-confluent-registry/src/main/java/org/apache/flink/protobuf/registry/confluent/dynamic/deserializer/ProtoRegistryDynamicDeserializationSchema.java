@@ -22,6 +22,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.protobuf.PbFormatConfig;
 import org.apache.flink.formats.protobuf.deserialize.ProtoToRowConverter;
 import org.apache.flink.protobuf.registry.confluent.ProtobufConfluentDeserializationSchema;
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProvider;
 import org.apache.flink.protobuf.registry.confluent.dynamic.ProtoCompiler;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
@@ -55,12 +56,13 @@ public class ProtoRegistryDynamicDeserializationSchema
     private RowType rowType;
     private final TypeInformation<RowData> resultTypeInfo;
 
-    private final SchemaRegistryClient schemaRegistryClient;
     private final Map<Integer, KafkaProtobufDeserializer> kafkaProtobufDeserializers;
     private final boolean ignoreParseErrors;
     private final boolean readDefaultValues;
     private final String schemaRegistryUrl;
+    private final SchemaRegistryClientProvider schemaRegistryClientProvider;
 
+    private transient SchemaRegistryClient schemaRegistryClient;
     // Since these services operate on dynamically compiled and loaded classes, we need to
     // assume that the new worker don't have the classes loaded yet.
     private transient Map<Integer, ProtoToRowConverter> protoToRowConverters;
@@ -70,7 +72,7 @@ public class ProtoRegistryDynamicDeserializationSchema
     private static final String FAKE_TOPIC = "fake_topic";
 
     public ProtoRegistryDynamicDeserializationSchema(
-            SchemaRegistryClient schemaRegistryClient,
+            SchemaRegistryClientProvider schemaRegistryClientProvider,
             String schemaRegistryUrl,
             RowType rowType,
             TypeInformation<RowData> resultTypeInfo,
@@ -80,7 +82,7 @@ public class ProtoRegistryDynamicDeserializationSchema
         this.resultTypeInfo = resultTypeInfo;
         this.ignoreParseErrors = ignoreParseErrors;
         this.readDefaultValues = readDefaultValues;
-        this.schemaRegistryClient = schemaRegistryClient;
+        this.schemaRegistryClientProvider = schemaRegistryClientProvider;
         this.schemaRegistryUrl = schemaRegistryUrl;
         this.kafkaProtobufDeserializers = new HashMap<>();
     }
@@ -119,6 +121,7 @@ public class ProtoRegistryDynamicDeserializationSchema
 
     @Override
     public void open(InitializationContext context) throws Exception {
+        schemaRegistryClient = schemaRegistryClientProvider.createSchemaRegistryClient();
         protoToRowConverters = new HashMap<>();
         protoCompiler = new ProtoCompiler();
         generatedMessageClasses = new HashMap<>();

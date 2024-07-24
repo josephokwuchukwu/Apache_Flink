@@ -18,6 +18,7 @@
 
 package org.apache.flink.protobuf.registry.confluent.debezium;
 
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProviders;
 import org.apache.flink.protobuf.registry.confluent.TestUtils;
 import org.apache.flink.protobuf.registry.confluent.dynamic.deserializer.ProtoRegistryDynamicDeserializationSchema;
 import org.apache.flink.table.data.RowData;
@@ -72,7 +73,8 @@ public class ProtobufConfluentDebeziumDeserializationSchemaTest {
                         new RowType.RowField(BOOL_FIELD, new BooleanType()));
         ProtoRegistryDynamicDeserializationSchema wrappedDeser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        new SchemaRegistryClientProviders.MockSchemaRegistryClientProvider(
+                                mockSchemaRegistryClient),
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,

@@ -18,6 +18,7 @@
 
 package org.apache.flink.protobuf.registry.confluent.debezium;
 
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProviders;
 import org.apache.flink.protobuf.registry.confluent.TestUtils;
 import org.apache.flink.protobuf.registry.confluent.dynamic.serializer.ProtoRegistryDynamicSerializationSchema;
 import org.apache.flink.table.data.GenericRowData;
@@ -64,7 +65,8 @@ public class ProtobufConfluentDebeziumSerializationSchemaTest {
                         className,
                         rowType,
                         FAKE_SUBJECT,
-                        mockSchemaRegistryClient,
+                        new SchemaRegistryClientProviders.MockSchemaRegistryClientProvider(
+                                mockSchemaRegistryClient),
                         DUMMY_SCHEMA_REGISTRY_URL);
         ser = new ProtobufConfluentDebeziumSerializationSchema(wrappedSer);
         ser.open(null);

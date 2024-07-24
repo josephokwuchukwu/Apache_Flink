@@ -22,6 +22,7 @@ import org.apache.flink.formats.protobuf.PbFormatConfig;
 import org.apache.flink.formats.protobuf.serialize.MessageSerializer;
 import org.apache.flink.formats.protobuf.serialize.RowToProtoConverter;
 import org.apache.flink.protobuf.registry.confluent.ProtobufConfluentSerializationSchema;
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProvider;
 import org.apache.flink.protobuf.registry.confluent.dynamic.ProtoCompiler;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
@@ -48,9 +49,10 @@ public class ProtoRegistryDynamicSerializationSchema
     private final String generatedClassName;
     private RowType rowType;
     private final String subjectName;
-    private final SchemaRegistryClient schemaRegistryClient;
     private final String schemaRegistryUrl;
+    private final SchemaRegistryClientProvider schemaRegistryClientProvider;
 
+    private transient SchemaRegistryClient schemaRegistryClient;
     private transient RowToProtoConverter rowToProtoConverter;
 
     public ProtoRegistryDynamicSerializationSchema(
@@ -58,13 +60,13 @@ public class ProtoRegistryDynamicSerializationSchema
             String generatedClassName,
             RowType rowType,
             String subjectName,
-            SchemaRegistryClient schemaRegistryClient,
+            SchemaRegistryClientProvider schemaRegistryClientProvider,
             String schemaRegistryUrl) {
         this.generatedPackageName = generatedPackageName;
         this.generatedClassName = generatedClassName;
         this.rowType = rowType;
         this.subjectName = subjectName;
-        this.schemaRegistryClient = schemaRegistryClient;
+        this.schemaRegistryClientProvider = schemaRegistryClientProvider;
         this.schemaRegistryUrl = schemaRegistryUrl;
     }
 
@@ -79,6 +81,7 @@ public class ProtoRegistryDynamicSerializationSchema
 
     @Override
     public void open(InitializationContext context) throws Exception {
+        schemaRegistryClient = schemaRegistryClientProvider.createSchemaRegistryClient();
         Class generatedClass = generateProtoClassForRowType();
         KafkaProtobufSerializer kafkaProtobufSerializer = createKafkaSerializer();
         MessageSerializer messageSerializer =

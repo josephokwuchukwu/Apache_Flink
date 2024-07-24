@@ -23,6 +23,7 @@ import org.apache.flink.formats.protobuf.proto.FlatProto3OuterClass;
 import org.apache.flink.formats.protobuf.proto.MapProto3;
 import org.apache.flink.formats.protobuf.proto.NestedProto3OuterClass;
 import org.apache.flink.formats.protobuf.proto.TimestampProto3OuterClass;
+import org.apache.flink.protobuf.registry.confluent.SchemaRegistryClientProviders;
 import org.apache.flink.protobuf.registry.confluent.TestUtils;
 import org.apache.flink.table.data.GenericMapData;
 import org.apache.flink.table.data.GenericRowData;
@@ -58,6 +59,8 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
     private MockSchemaRegistryClient mockSchemaRegistryClient;
     private KafkaProtobufSerializer kafkaProtobufSerializer;
+    private SchemaRegistryClientProviders.MockSchemaRegistryClientProvider
+            mockSchemaRegistryClientProvider;
 
     @BeforeEach
     public void setup() {
@@ -65,6 +68,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
         Map<String, String> opts = new HashMap<>();
         opts.put("schema.registry.url", DUMMY_SCHEMA_REGISTRY_URL);
         kafkaProtobufSerializer = new KafkaProtobufSerializer(mockSchemaRegistryClient, opts);
+        mockSchemaRegistryClientProvider =
+                new SchemaRegistryClientProviders.MockSchemaRegistryClientProvider(
+                        mockSchemaRegistryClient);
     }
 
     @Test
@@ -91,7 +97,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -136,7 +142,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -170,7 +176,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -217,7 +223,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -263,7 +269,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
 
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -320,7 +326,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                                         new RowType.RowField("city", new VarCharType()))));
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
@@ -345,7 +351,7 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         new RowType.RowField(TestUtils.STRING_FIELD, new VarCharType()));
         ProtoRegistryDynamicDeserializationSchema deser =
                 new ProtoRegistryDynamicDeserializationSchema(
-                        mockSchemaRegistryClient,
+                        mockSchemaRegistryClientProvider,
                         DUMMY_SCHEMA_REGISTRY_URL,
                         rowType,
                         null,
