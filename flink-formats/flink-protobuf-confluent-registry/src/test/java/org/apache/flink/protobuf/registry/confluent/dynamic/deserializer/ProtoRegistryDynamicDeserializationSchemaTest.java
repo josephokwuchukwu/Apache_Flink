@@ -19,6 +19,7 @@
 package org.apache.flink.protobuf.registry.confluent.dynamic.deserializer;
 
 import org.apache.flink.formats.protobuf.proto.AddressAndUser;
+import org.apache.flink.formats.protobuf.proto.ConfluentDebeziumProto3;
 import org.apache.flink.formats.protobuf.proto.FlatProto3OuterClass;
 import org.apache.flink.formats.protobuf.proto.MapProto3;
 import org.apache.flink.formats.protobuf.proto.NestedProto3OuterClass;
@@ -31,6 +32,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.binary.BinaryStringData;
 import org.apache.flink.table.types.logical.ArrayType;
 import org.apache.flink.table.types.logical.BigIntType;
+import org.apache.flink.table.types.logical.BinaryType;
 import org.apache.flink.table.types.logical.DoubleType;
 import org.apache.flink.table.types.logical.FloatType;
 import org.apache.flink.table.types.logical.IntType;
@@ -42,6 +44,7 @@ import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.entities.SchemaReference;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
+import io.confluent.protobuf.type.Decimal;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +57,8 @@ import static org.apache.flink.protobuf.registry.confluent.TestUtils.DUMMY_SCHEM
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.FAKE_TOPIC;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.IGNORE_PARSE_ERRORS;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.READ_DEFAULT_VALUES;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_BYTES;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_INT;
 
 class ProtoRegistryDynamicDeserializationSchemaTest {
 
@@ -284,6 +289,48 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
         timestampValue.setField(0, TestUtils.TEST_LONG);
         timestampValue.setField(1, TestUtils.TEST_INT);
         Assertions.assertEquals(timestampValue, actual.getRow(0, 2));
+    }
+
+    @Test
+    public void deserializeConfluentDecimal() throws Exception {
+        ConfluentDebeziumProto3.DecimalProto3 in =
+                ConfluentDebeziumProto3.DecimalProto3.newBuilder()
+                        .setDecimal(
+                                Decimal.newBuilder()
+                                        .setValue(TEST_BYTES)
+                                        .setPrecision(TEST_INT * 2)
+                                        .setScale(TEST_INT)
+                                        .build())
+                        .build();
+        byte[] inBytes = kafkaProtobufSerializer.serialize(FAKE_TOPIC, in);
+
+        RowType rowType =
+                TestUtils.createRowType(
+                        new RowType.RowField(
+                                "decimal",
+                                TestUtils.createRowType(
+                                        new RowType.RowField("value", new BinaryType()),
+                                        new RowType.RowField("precision", new IntType()),
+                                        new RowType.RowField("scale", new IntType()))));
+
+        ProtoRegistryDynamicDeserializationSchema deser =
+                new ProtoRegistryDynamicDeserializationSchema(
+                        mockSchemaRegistryClientProvider,
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        rowType,
+                        null,
+                        IGNORE_PARSE_ERRORS,
+                        READ_DEFAULT_VALUES);
+        deser.open(null);
+
+        RowData actual = deser.deserialize(inBytes);
+        Assertions.assertEquals(1, actual.getArity());
+
+        GenericRowData decimalValue = new GenericRowData(3);
+        decimalValue.setField(0, TestUtils.TEST_BYTES.toByteArray());
+        decimalValue.setField(1, TestUtils.TEST_INT * 2);
+        decimalValue.setField(2, TestUtils.TEST_INT);
+        Assertions.assertEquals(decimalValue, actual.getRow(0, 3));
     }
 
     @Test

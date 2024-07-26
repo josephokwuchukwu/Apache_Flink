@@ -225,6 +225,33 @@ public class ProtoCompilerTest {
     }
 
     @Test
+    public void confluentTagsWithImportProto3() throws Exception {
+        // the schemas registered by Debezium don't always seem to have the import statement in
+        // the definition
+        String schemaStr =
+                "syntax = \"proto3\";\n"
+                        + "package org.apache.flink.formats.protobuf.proto;\n"
+                        + "import \"confluent/meta.proto\";\n"
+                        + "\n"
+                        + "message ConfluentTagsWithImportProto3 {\n"
+                        + "  int32 int = 1 [(confluent.field_meta) = {\n"
+                        + "    params: [\n"
+                        + "      {\n"
+                        + "        key: \"connect.type\",\n"
+                        + "        value: \"int16\"\n"
+                        + "      }\n"
+                        + "    ]\n"
+                        + "  }];\n"
+                        + "}";
+
+        ProtobufSchema schema = new ProtobufSchema(schemaStr);
+        ProtoCompiler protoCompiler = new ProtoCompiler(DEFAULT_CLASS_SUFFIX);
+
+        // We just want to check that the compiler doesn't throw an exception
+        protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID);
+    }
+
+    @Test
     public void flatProto2() throws Exception {
         FlatProto2OuterClass.FlatProto2 in =
                 FlatProto2OuterClass.FlatProto2.newBuilder()

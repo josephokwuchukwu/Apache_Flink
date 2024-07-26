@@ -23,6 +23,7 @@ import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
 import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.protobuf.MetaProto;
+import io.confluent.protobuf.type.DecimalProto;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -37,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -53,6 +55,8 @@ public class ProtoCompiler {
 
     private static final String CONFLUENT = "confluent";
     private static final String META_PROTO = String.format("%s/%s", CONFLUENT, "meta.proto");
+    private static final String DECIMAL_PROTO =
+            String.format("%s/%s/%s", CONFLUENT, "type", "decimal.proto");
     // TODO: Hava constructor that can fetch the protocVersion from project properties
     private static final String DEFAULT_PROTOC_VERSION = "3.21.7";
 
@@ -64,7 +68,7 @@ public class ProtoCompiler {
         this.confluentProtosDir = createChildDir(parentDir, CONFLUENT);
         this.protocVersion = protocVersion;
         this.copyConfluentProto("/" + META_PROTO);
-        this.copyConfluentProto(String.format("/%s/%s/%s", CONFLUENT, "type", "decimal.proto"));
+        this.copyConfluentProto("/" + DECIMAL_PROTO);
     }
 
     public ProtoCompiler(String protocVersion, String classSuffix) {
@@ -219,13 +223,8 @@ public class ProtoCompiler {
         DescriptorProtos.FileDescriptorProto.Builder newProtoBuilder =
                 originalDescriptor.toProto().toBuilder().setOptions(newOptions);
 
-        // Debezium schemas sometimes contain references to "confluent/meta.proto" message types
-        // but don't contain the import statement.
-        if (!originalDescriptor.getDependencies().contains(MetaProto.getDescriptor())) {
-            newProtoBuilder.addDependency(META_PROTO);
-        }
-
-        DescriptorProtos.FileDescriptorProto newProto = newProtoBuilder.build();
+        DescriptorProtos.FileDescriptorProto newProto =
+                maybeAddConfluentImports(newProtoBuilder, originalDescriptor.getDependencies());
         try {
             return new ProtobufSchema(
                     Descriptors.FileDescriptor.buildFrom(
@@ -234,8 +233,37 @@ public class ProtoCompiler {
                                     .getDependencies()
                                     .toArray(new Descriptors.FileDescriptor[0])));
         } catch (Exception e) {
-            throw new RuntimeException("Failed to set Java outer class name.", e);
+            throw new RuntimeException("Failed to set proto options.", e);
         }
+    }
+
+    // Debezium schemas sometimes contain references to confluent message types
+    // but don't contain the necessary import statement. This can lead to
+    // protoc errors. We will add the necessary imports if they are missing.
+    private DescriptorProtos.FileDescriptorProto maybeAddConfluentImports(
+            DescriptorProtos.FileDescriptorProto.Builder newProtoBuilder,
+            List<Descriptors.FileDescriptor> originalDependencies) {
+        List<String> originalDependencyNames =
+                originalDependencies.stream()
+                        .map(
+                                dep -> {
+                                    if (dep.getPackage().isEmpty() || dep.getName().contains("/")) {
+                                        return dep.getName();
+                                    }
+                                    return String.format("%s/%s", dep.getPackage(), dep.getName());
+                                })
+                        .collect(Collectors.toList());
+
+        if (!originalDependencyNames.contains(META_PROTO)
+                && !originalDependencies.contains(MetaProto.getDescriptor())) {
+            newProtoBuilder.addDependency(META_PROTO);
+        }
+        if (!originalDependencyNames.contains(DECIMAL_PROTO)
+                && !originalDependencies.contains(DecimalProto.getDescriptor())) {
+            newProtoBuilder.addDependency(DECIMAL_PROTO);
+        }
+
+        return newProtoBuilder.build();
     }
 
     private String getClassNameFromProto(ProtobufSchema protobufSchema) {
