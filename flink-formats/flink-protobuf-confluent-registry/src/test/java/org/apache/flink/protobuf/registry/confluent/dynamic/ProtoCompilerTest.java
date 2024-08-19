@@ -54,6 +54,7 @@ import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_FLOAT;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_INT;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_LONG;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_STRING;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.USE_DEFAULT_PROTO_INCLUDES;
 
 public class ProtoCompilerTest {
 
@@ -218,7 +219,8 @@ public class ProtoCompilerTest {
                         + "}";
 
         ProtobufSchema schema = new ProtobufSchema(schemaStr);
-        ProtoCompiler protoCompiler = new ProtoCompiler(DEFAULT_CLASS_SUFFIX);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, USE_DEFAULT_PROTO_INCLUDES);
 
         // We just want to check that the compiler doesn't throw an exception
         protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID);
@@ -245,7 +247,104 @@ public class ProtoCompilerTest {
                         + "}";
 
         ProtobufSchema schema = new ProtobufSchema(schemaStr);
-        ProtoCompiler protoCompiler = new ProtoCompiler(DEFAULT_CLASS_SUFFIX);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, USE_DEFAULT_PROTO_INCLUDES);
+
+        // We just want to check that the compiler doesn't throw an exception
+        protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID);
+    }
+
+    @Test
+    public void confluentTagsWithoutDefaultIncludesProto3() throws Exception {
+        String schemaStr =
+                "syntax = \"proto3\";\n"
+                        + "package org.apache.flink.formats.protobuf.proto;\n"
+                        + "import \"confluent/meta.proto\";\n"
+                        + "\n"
+                        + "message ConfluentTagsWithImportProto3 {\n"
+                        + "  int32 int = 1 [(confluent.field_meta) = {\n"
+                        + "    params: [\n"
+                        + "      {\n"
+                        + "        key: \"connect.type\",\n"
+                        + "        value: \"int16\"\n"
+                        + "      }\n"
+                        + "    ]\n"
+                        + "  }];\n"
+                        + "}";
+
+        ProtobufSchema schema = new ProtobufSchema(schemaStr);
+        boolean useDefaultProtoIncludes = false;
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, useDefaultProtoIncludes);
+
+        Assertions.assertThrows(
+                RuntimeException.class,
+                () -> protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID));
+    }
+
+    @Test
+    public void customIncludesProto3() throws Exception {
+        String schemaStr =
+                "syntax = \"proto3\";\n"
+                        + "package org.apache.flink.formats.protobuf.proto;\n"
+                        + "import \"confluent/meta.proto\";\n"
+                        + "\n"
+                        + "message ConfluentTagsWithImportProto3 {\n"
+                        + "  int32 int = 1 [(confluent.field_meta) = {\n"
+                        + "    params: [\n"
+                        + "      {\n"
+                        + "        key: \"connect.type\",\n"
+                        + "        value: \"int16\"\n"
+                        + "      }\n"
+                        + "    ]\n"
+                        + "  }];\n"
+                        + "}";
+
+        ProtobufSchema schema = new ProtobufSchema(schemaStr);
+        boolean useDefaultProtoIncludes = false;
+        String[] customProtoIncludes =
+                new String[] {
+                    "/confluent/meta.proto",
+                    "/confluent/type/decimal.proto",
+                    "/google/protobuf/descriptor.proto"
+                };
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(
+                        DEFAULT_CLASS_SUFFIX, useDefaultProtoIncludes, customProtoIncludes);
+
+        // We just want to check that the compiler doesn't throw an exception
+        protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID);
+    }
+
+    @Test
+    public void optionalWithConfluentTagsProto3() throws Exception {
+        String schemaStr =
+                "syntax = \"proto3\";\n"
+                        + "package org.apache.flink.formats.protobuf.proto;\n"
+                        + "\n"
+                        + "message Envelope {\n"
+                        + "  optional Value before = 1;\n"
+                        + "\n"
+                        + "  message Value {\n"
+                        + "    int64 id = 1 [deprecated = false];\n"
+                        + "    optional int64 other_id = 2 ;\n"
+                        + "    optional int32 is_published = 13 [\n"
+                        + "      deprecated = false,\n"
+                        + "      (confluent.field_meta) = {\n"
+                        + "        params: [\n"
+                        + "          {\n"
+                        + "            key: \"connect.type\",\n"
+                        + "            value: \"int16\"\n"
+                        + "          }\n"
+                        + "        ]\n"
+                        + "      }\n"
+                        + "    ];"
+                        + "  }\n"
+                        + "}";
+
+        ProtobufSchema schema = new ProtobufSchema(schemaStr);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, USE_DEFAULT_PROTO_INCLUDES);
 
         // We just want to check that the compiler doesn't throw an exception
         protoCompiler.generateMessageClass(schema, DEFAULT_SCHEMA_ID);
@@ -296,7 +395,8 @@ public class ProtoCompilerTest {
         byte[] inBytes = in.toByteArray();
 
         ProtobufSchema schema = new ProtobufSchema(in.getDescriptorForType());
-        ProtoCompiler protoCompiler = new ProtoCompiler(DEFAULT_CLASS_SUFFIX);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, USE_DEFAULT_PROTO_INCLUDES);
         Class generatedClass1 = protoCompiler.generateMessageClass(schema, 1);
         Class generatedClass2 = protoCompiler.generateMessageClass(schema, 2);
 
@@ -334,7 +434,8 @@ public class ProtoCompilerTest {
                 new Thread(
                         () -> {
                             try {
-                                ProtoCompiler protoCompiler = new ProtoCompiler();
+                                ProtoCompiler protoCompiler =
+                                        new ProtoCompiler(USE_DEFAULT_PROTO_INCLUDES);
                                 Class generatedClass =
                                         protoCompiler.generateMessageClass(
                                                 schema, DEFAULT_SCHEMA_ID);
@@ -348,7 +449,8 @@ public class ProtoCompilerTest {
                 new Thread(
                         () -> {
                             try {
-                                ProtoCompiler protoCompiler = new ProtoCompiler();
+                                ProtoCompiler protoCompiler =
+                                        new ProtoCompiler(USE_DEFAULT_PROTO_INCLUDES);
                                 Class generatedClass =
                                         protoCompiler.generateMessageClass(
                                                 schema, DEFAULT_SCHEMA_ID);
@@ -383,7 +485,8 @@ public class ProtoCompilerTest {
 
         // Fixtures
         ProtobufSchema schema = new ProtobufSchema(message.getDescriptorForType());
-        ProtoCompiler protoCompiler = new ProtoCompiler(DEFAULT_CLASS_SUFFIX);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(DEFAULT_CLASS_SUFFIX, USE_DEFAULT_PROTO_INCLUDES);
 
         // Call the target method
         Class messageClass = protoCompiler.generateMessageClass(schema, fakeSchemaId);

@@ -43,6 +43,27 @@ public class ProtobufConfluentFormatOptions {
                     .withDescription(
                             "The number of schemas to cache in the Confluent Schema Registry client.");
 
+    public static final ConfigOption<Boolean> USE_DEFAULT_PROTO_INCLUDES =
+            ConfigOptions.key("use-default-proto-includes")
+                    .booleanType()
+                    .defaultValue(true)
+                    .withDescription(
+                            "Whether to include the following set of proto descriptors when calling protoc to generate the Java classes that are used for (de)-serialization: "
+                                    + "confluent/meta.proto, confluent/types/decimal.proto, "
+                                    + "/google/protobuf/any.proto, /google/protobuf/api.proto, "
+                                    + "/google/protobuf/descriptor.proto, /google/protobuf/duration.proto, "
+                                    + "/google/protobuf/empty.proto, /google/protobuf/field_mask.proto, "
+                                    + "/google/protobuf/source_context.proto, /google/protobuf/struct.proto, "
+                                    + "/google/protobuf/timestamp.proto, /google/protobuf/type.proto, "
+                                    + "/google/protobuf/wrappers.proto");
+
+    public static final ConfigOption<String> CUSTOM_PROTO_INCLUDES =
+            ConfigOptions.key("custom-proto-includes")
+                    .stringType()
+                    .defaultValue("")
+                    .withDescription(
+                            "A comma-separated list of Java resource URLs that should be included when calling protoc to generate the Java classes that are used for (de)-serialization.");
+
     // --------------------------------------------------------------------------------------------
     // Serialization options
     // --------------------------------------------------------------------------------------------
@@ -97,7 +118,7 @@ public class ProtobufConfluentFormatOptions {
                     .withDescription(
                             "Optional flag to read as default values instead of null when some field does not exist in deserialization; default to false."
                                     + "If proto syntax is proto3, users need to set this to true when using protobuf versions lower than 3.15 as older versions "
-                                    + "do not support checking for field presence which can cause runtime compilation issues. Additionally, primtive types "
+                                    + "do not support checking for field presence which can cause runtime compilation issues. Additionally, primitive types "
                                     + "will be set to default values instead of null as field presence cannot be checked for them. Please be aware that setting this"
                                     + " to true will cause the deserialization performance to be much slower depending on schema complexity and message size");
 

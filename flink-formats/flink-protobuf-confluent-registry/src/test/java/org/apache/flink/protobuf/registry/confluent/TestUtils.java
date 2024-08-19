@@ -63,6 +63,8 @@ public class TestUtils {
     public static final String DUMMY_SCHEMA_REGISTRY_URL = "http://registry:8081";
     public static final String FAKE_TOPIC = "fake-topic";
     public static final String FAKE_SUBJECT = "fake-subject";
+    public static final boolean USE_DEFAULT_PROTO_INCLUDES = true;
+    public static final List<String> CUSTOM_PROTO_INCLUDES = new ArrayList<>();
     public static final boolean IGNORE_PARSE_ERRORS = false;
     public static final boolean READ_DEFAULT_VALUES = false;
 

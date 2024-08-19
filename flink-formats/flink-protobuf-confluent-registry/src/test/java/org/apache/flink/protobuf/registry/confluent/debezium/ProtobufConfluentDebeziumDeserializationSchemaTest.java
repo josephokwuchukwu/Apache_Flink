@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.BOOL_FIELD;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.CUSTOM_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.DUMMY_SCHEMA_REGISTRY_URL;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.FAKE_TOPIC;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.IGNORE_PARSE_ERRORS;
@@ -51,6 +52,7 @@ import static org.apache.flink.protobuf.registry.confluent.TestUtils.STRING_FIEL
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_BOOL;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_LONG;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_STRING;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.USE_DEFAULT_PROTO_INCLUDES;
 
 public class ProtobufConfluentDebeziumDeserializationSchemaTest {
 
@@ -79,7 +81,9 @@ public class ProtobufConfluentDebeziumDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser = new ProtobufConfluentDebeziumDeserializationSchema(wrappedDeser);
         deser.open(null);
     }

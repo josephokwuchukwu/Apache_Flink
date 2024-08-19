@@ -36,6 +36,7 @@ import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchemaProvider;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +49,7 @@ import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentForm
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.BASIC_AUTH_USER_INFO;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.BEARER_AUTH_CREDENTIALS_SOURCE;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.BEARER_AUTH_TOKEN;
+import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.CUSTOM_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.IGNORE_PARSE_ERRORS;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.MESSAGE_NAME;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.PACKAGE_NAME;
@@ -60,6 +62,7 @@ import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentForm
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.SSL_TRUSTSTORE_PASSWORD;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.SUBJECT;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.URL;
+import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.USE_DEFAULT_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.ProtobufConfluentFormatOptions.WRITE_NULL_STRING_LITERAL;
 
 public class ProtobufConfluentFormatFactoryUtils {
@@ -81,7 +84,9 @@ public class ProtobufConfluentFormatFactoryUtils {
                 rowType,
                 rowDataTypeInfo,
                 formatOptions.get(IGNORE_PARSE_ERRORS),
-                formatOptions.get(READ_DEFAULT_VALUES));
+                formatOptions.get(READ_DEFAULT_VALUES),
+                formatOptions.get(USE_DEFAULT_PROTO_INCLUDES),
+                parseCustomProtoIncludes(formatOptions.get(CUSTOM_PROTO_INCLUDES)));
     }
 
     public static ProtoRegistryDynamicSerializationSchema createDynamicSerializationSchema(
@@ -96,7 +101,9 @@ public class ProtobufConfluentFormatFactoryUtils {
                 rowType,
                 formatOptions.get(SUBJECT),
                 schemaRegistryClientProvider,
-                schemaRegistryURL);
+                schemaRegistryURL,
+                formatOptions.get(USE_DEFAULT_PROTO_INCLUDES),
+                parseCustomProtoIncludes(formatOptions.get(CUSTOM_PROTO_INCLUDES)));
     }
 
     public static Set<ConfigOption<?>> requiredOptions() {
@@ -108,6 +115,8 @@ public class ProtobufConfluentFormatFactoryUtils {
     public static Set<ConfigOption<?>> optionalOptions() {
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(REGISTRY_CLIENT_CACHE_CAPACITY);
+        options.add(USE_DEFAULT_PROTO_INCLUDES);
+        options.add(CUSTOM_PROTO_INCLUDES);
         options.add(SUBJECT);
         options.add(MESSAGE_NAME);
         options.add(PACKAGE_NAME);
@@ -130,6 +139,8 @@ public class ProtobufConfluentFormatFactoryUtils {
         return Stream.of(
                         URL,
                         REGISTRY_CLIENT_CACHE_CAPACITY,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES,
                         SUBJECT,
                         MESSAGE_NAME,
                         PACKAGE_NAME,
@@ -174,6 +185,13 @@ public class ProtobufConfluentFormatFactoryUtils {
                 schemaRegistryURL,
                 formatOptions.get(REGISTRY_CLIENT_CACHE_CAPACITY),
                 buildOptionalPropertiesMap(formatOptions));
+    }
+
+    static List<String> parseCustomProtoIncludes(String customProtoIncludes) {
+        if (customProtoIncludes == null || customProtoIncludes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return Arrays.asList(customProtoIncludes.split(","));
     }
 
     private static @Nullable Map<String, String> buildOptionalPropertiesMap(

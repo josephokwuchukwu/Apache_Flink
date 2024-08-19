@@ -49,8 +49,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.CUSTOM_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.DUMMY_SCHEMA_REGISTRY_URL;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.FAKE_SUBJECT;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.USE_DEFAULT_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.parseBytesToMessage;
 
 public class ProtoRegistryDynamicSerializationSchemaTest {
@@ -87,7 +89,9 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         rowType,
                         FAKE_SUBJECT,
                         mockSchemaRegistryClientProvider,
-                        DUMMY_SCHEMA_REGISTRY_URL);
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         protoRegistryDynamicSerializationSchema.open(null);
 
         GenericRowData rowData = new GenericRowData(7);
@@ -144,7 +148,9 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         rowType,
                         FAKE_SUBJECT,
                         mockSchemaRegistryClientProvider,
-                        DUMMY_SCHEMA_REGISTRY_URL);
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         protoRegistryDynamicSerializationSchema.open(null);
 
         GenericRowData nestedRow = new GenericRowData(2);
@@ -183,7 +189,9 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         rowType,
                         FAKE_SUBJECT,
                         mockSchemaRegistryClientProvider,
-                        DUMMY_SCHEMA_REGISTRY_URL);
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         protoRegistryDynamicSerializationSchema.open(null);
 
         GenericRowData rowData = new GenericRowData(1);
@@ -228,7 +236,9 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         rowType,
                         FAKE_SUBJECT,
                         mockSchemaRegistryClientProvider,
-                        DUMMY_SCHEMA_REGISTRY_URL);
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         protoRegistryDynamicSerializationSchema.open(null);
 
         GenericRowData rowData = new GenericRowData(3);
@@ -312,7 +322,9 @@ public class ProtoRegistryDynamicSerializationSchemaTest {
                         rowType,
                         FAKE_SUBJECT,
                         mockSchemaRegistryClientProvider,
-                        DUMMY_SCHEMA_REGISTRY_URL);
+                        DUMMY_SCHEMA_REGISTRY_URL,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         protoRegistryDynamicSerializationSchema.open(null);
 
         GenericRowData nestedRow = new GenericRowData(2);

@@ -33,6 +33,7 @@ import io.confluent.kafka.schemaregistry.protobuf.ProtobufSchema;
 import io.confluent.kafka.serializers.protobuf.KafkaProtobufSerializer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,6 +52,8 @@ public class ProtoRegistryDynamicSerializationSchema
     private final String subjectName;
     private final String schemaRegistryUrl;
     private final SchemaRegistryClientProvider schemaRegistryClientProvider;
+    private final boolean useDefaultProtoIncludes;
+    private final List<String> customProtoIncludes;
 
     private transient SchemaRegistryClient schemaRegistryClient;
     private transient RowToProtoConverter rowToProtoConverter;
@@ -61,13 +64,17 @@ public class ProtoRegistryDynamicSerializationSchema
             RowType rowType,
             String subjectName,
             SchemaRegistryClientProvider schemaRegistryClientProvider,
-            String schemaRegistryUrl) {
+            String schemaRegistryUrl,
+            boolean useDefaultProtoIncludes,
+            List<String> customProtoIncludes) {
         this.generatedPackageName = generatedPackageName;
         this.generatedClassName = generatedClassName;
         this.rowType = rowType;
         this.subjectName = subjectName;
         this.schemaRegistryClientProvider = schemaRegistryClientProvider;
         this.schemaRegistryUrl = schemaRegistryUrl;
+        this.useDefaultProtoIncludes = useDefaultProtoIncludes;
+        this.customProtoIncludes = customProtoIncludes;
     }
 
     @Override
@@ -106,7 +113,11 @@ public class ProtoRegistryDynamicSerializationSchema
                 new RowToProtobufSchemaConverter(generatedPackageName, generatedClassName, rowType);
 
         ProtobufSchema protoSchema = rowToProtobufSchemaConverter.convert();
-        ProtoCompiler protoCompiler = new ProtoCompiler(PROTOBUF_OUTER_CLASS_NAME_SUFFIX);
+        ProtoCompiler protoCompiler =
+                new ProtoCompiler(
+                        PROTOBUF_OUTER_CLASS_NAME_SUFFIX,
+                        this.useDefaultProtoIncludes,
+                        this.customProtoIncludes.toArray(new String[0]));
         return protoCompiler.generateMessageClass(protoSchema, null);
     }
 

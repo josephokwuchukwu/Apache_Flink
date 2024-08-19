@@ -53,12 +53,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.CUSTOM_PROTO_INCLUDES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.DUMMY_SCHEMA_REGISTRY_URL;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.FAKE_TOPIC;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.IGNORE_PARSE_ERRORS;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.READ_DEFAULT_VALUES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_BYTES;
 import static org.apache.flink.protobuf.registry.confluent.TestUtils.TEST_INT;
+import static org.apache.flink.protobuf.registry.confluent.TestUtils.USE_DEFAULT_PROTO_INCLUDES;
 
 class ProtoRegistryDynamicDeserializationSchemaTest {
 
@@ -107,7 +109,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -152,7 +156,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -186,7 +192,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -233,7 +241,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -279,7 +289,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -320,7 +332,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -378,7 +392,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         RowData actual = deser.deserialize(inBytes);
@@ -403,7 +419,9 @@ class ProtoRegistryDynamicDeserializationSchemaTest {
                         rowType,
                         null,
                         IGNORE_PARSE_ERRORS,
-                        READ_DEFAULT_VALUES);
+                        READ_DEFAULT_VALUES,
+                        USE_DEFAULT_PROTO_INCLUDES,
+                        CUSTOM_PROTO_INCLUDES);
         deser.open(null);
 
         Assertions.assertNull(deser.deserialize(inBytes));

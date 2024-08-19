@@ -131,7 +131,7 @@ public class ProtobufConfluentDebeziumDeserializationSchema
     }
 
     public static void updateRowType(MutableRowTypeSchema mutableRowTypeSchema) {
-        // Debezium Avro contains other information, e.g. "source", "ts_ms"
+        // Debezium Protobuf contains other information, e.g. "source", "ts_ms"
         // but we don't need them
         DataType originalDataType = fromLogicalToDataType(mutableRowTypeSchema.getRowType());
         RowType newRowType =

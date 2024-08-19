@@ -37,6 +37,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -61,6 +62,8 @@ public class ProtoRegistryDynamicDeserializationSchema
     private final boolean readDefaultValues;
     private final String schemaRegistryUrl;
     private final SchemaRegistryClientProvider schemaRegistryClientProvider;
+    private final boolean useDefaultProtoIncludes;
+    private final List<String> customProtoIncludes;
 
     private transient SchemaRegistryClient schemaRegistryClient;
     // Since these services operate on dynamically compiled and loaded classes, we need to
@@ -77,7 +80,9 @@ public class ProtoRegistryDynamicDeserializationSchema
             RowType rowType,
             TypeInformation<RowData> resultTypeInfo,
             boolean ignoreParseErrors,
-            boolean readDefaultValues) {
+            boolean readDefaultValues,
+            boolean useDefaultProtoIncludes,
+            List<String> customProtoIncludes) {
         this.rowType = rowType;
         this.resultTypeInfo = resultTypeInfo;
         this.ignoreParseErrors = ignoreParseErrors;
@@ -85,6 +90,8 @@ public class ProtoRegistryDynamicDeserializationSchema
         this.schemaRegistryClientProvider = schemaRegistryClientProvider;
         this.schemaRegistryUrl = schemaRegistryUrl;
         this.kafkaProtobufDeserializers = new HashMap<>();
+        this.useDefaultProtoIncludes = useDefaultProtoIncludes;
+        this.customProtoIncludes = customProtoIncludes;
     }
 
     @Override
@@ -123,7 +130,10 @@ public class ProtoRegistryDynamicDeserializationSchema
     public void open(InitializationContext context) throws Exception {
         schemaRegistryClient = schemaRegistryClientProvider.createSchemaRegistryClient();
         protoToRowConverters = new HashMap<>();
-        protoCompiler = new ProtoCompiler();
+        protoCompiler =
+                new ProtoCompiler(
+                        this.useDefaultProtoIncludes,
+                        this.customProtoIncludes.toArray(new String[0]));
         generatedMessageClasses = new HashMap<>();
     }
 
