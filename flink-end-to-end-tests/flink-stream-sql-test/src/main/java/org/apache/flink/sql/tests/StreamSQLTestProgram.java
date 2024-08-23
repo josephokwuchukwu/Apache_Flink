@@ -27,6 +27,7 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestartStrategyOptions;
@@ -43,10 +44,10 @@ import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.
 import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.api.internal.TableEnvironmentInternal;
 import org.apache.flink.table.sources.DefinedFieldMapping;
 import org.apache.flink.table.sources.DefinedRowtimeAttributes;
 import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
@@ -56,6 +57,7 @@ import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
 
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -94,10 +96,23 @@ public class StreamSQLTestProgram {
 
         final StreamTableEnvironment tEnv = StreamTableEnvironment.create(sEnv);
 
-        ((TableEnvironmentInternal) tEnv)
-                .registerTableSourceInternal("table1", new GeneratorTableSource(10, 100, 60, 0));
-        ((TableEnvironmentInternal) tEnv)
-                .registerTableSourceInternal("table2", new GeneratorTableSource(5, 0.2f, 60, 5));
+        final Schema tableSchema =
+                Schema.newBuilder()
+                        .column("key", DataTypes.INT())
+                        .column("rowtime", DataTypes.TIMESTAMP(3).bridgedTo(Timestamp.class))
+                        .column("payload", DataTypes.STRING())
+                        .watermark("rowtime", "rowtime - interval '1' second")
+                        .build();
+
+        RowTypeInfo sourceType =
+                new RowTypeInfo(
+                        new TypeInformation[] {Types.INT, Types.LONG, Types.STRING},
+                        new String[] {"key", "rowtime", "payload"});
+        DataStream<Row> source1 = sEnv.addSource(new Generator(10, 100, 60, 0), sourceType);
+        tEnv.createTemporaryView("table1", source1, tableSchema);
+
+        DataStream<Row> source2 = sEnv.addSource(new Generator(5, 0.2f, 60, 5), sourceType);
+        tEnv.createTemporaryView("table2", source2, tableSchema);
 
         int overWindowSizeSeconds = 1;
         int tumbleWindowSizeSeconds = 10;

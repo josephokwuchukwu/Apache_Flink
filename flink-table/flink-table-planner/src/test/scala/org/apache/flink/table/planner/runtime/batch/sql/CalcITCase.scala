@@ -25,7 +25,7 @@ import org.apache.flink.api.common.typeinfo.Types
 import org.apache.flink.api.common.typeinfo.Types.INSTANT
 import org.apache.flink.api.java.typeutils._
 import org.apache.flink.api.scala._
-import org.apache.flink.table.api.{DataTypes, TableSchema, ValidationException}
+import org.apache.flink.table.api.{DataTypes, ValidationException}
 import org.apache.flink.table.api.config.ExecutionConfigOptions
 import org.apache.flink.table.api.config.ExecutionConfigOptions.LegacyCastBehaviour
 import org.apache.flink.table.catalog.CatalogDatabaseImpl
@@ -39,7 +39,7 @@ import org.apache.flink.table.planner.runtime.utils.BatchTableEnvUtil.parseField
 import org.apache.flink.table.planner.runtime.utils.BatchTestBase.row
 import org.apache.flink.table.planner.runtime.utils.TestData._
 import org.apache.flink.table.planner.runtime.utils.UserDefinedFunctionTestUtils._
-import org.apache.flink.table.planner.utils.{DateTimeTestUtil, TestLegacyFilterableTableSource}
+import org.apache.flink.table.planner.utils.DateTimeTestUtil
 import org.apache.flink.table.planner.utils.DateTimeTestUtil._
 import org.apache.flink.table.utils.DateTimeUtils.toLocalDateTime
 import org.apache.flink.types.Row
@@ -1800,12 +1800,6 @@ class CalcITCase extends BatchTestBase {
 
   @Test
   def testFilterPushDownWithInterval(): Unit = {
-    val schema = TableSchema
-      .builder()
-      .field("a", DataTypes.TIMESTAMP)
-      .field("b", DataTypes.TIMESTAMP)
-      .build()
-
     val data = List(
       row(localDateTime("2021-03-30 10:00:00"), localDateTime("2021-03-30 14:59:59")),
       row(localDateTime("2021-03-30 10:00:00"), localDateTime("2021-03-30 15:00:00")),
@@ -1815,13 +1809,18 @@ class CalcITCase extends BatchTestBase {
       row(localDateTime("2021-03-30 10:00:00"), localDateTime("2023-03-30 10:00:01"))
     )
 
-    TestLegacyFilterableTableSource.createTemporaryTable(
-      tEnv,
-      schema,
-      "myTable",
-      isBounded = true,
-      data,
-      Set("a", "b"))
+    val dataId = TestValuesTableFactory.registerData(data)
+    tEnv.executeSql(s"""
+                       |create table myTable(
+                       |  a TIMESTAMP(3),
+                       |  b TIMESTAMP(3)
+                       |) with (
+                       |  'connector' = 'values',
+                       |  'data-id' = '$dataId',
+                       |  'bounded' = 'true',
+                       |  'filterable-fields' = 'a,b'
+                       |)
+                       |""".stripMargin)
 
     checkResult(
       "SELECT * FROM myTable WHERE TIMESTAMPADD(HOUR, 5, a) >= b",
