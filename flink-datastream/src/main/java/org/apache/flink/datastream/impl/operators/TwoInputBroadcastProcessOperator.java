@@ -71,6 +71,7 @@ public class TwoInputBroadcastProcessOperator<IN1, IN2, OUT>
                         taskInfo.getMaxNumberOfParallelSubtasks(),
                         taskInfo.getTaskName(),
                         operatorContext.getMetricGroup());
+
         this.partitionedContext =
                 new DefaultPartitionedContext(
                         context,
@@ -80,6 +81,7 @@ public class TwoInputBroadcastProcessOperator<IN1, IN2, OUT>
                         operatorContext,
                         getOperatorStateBackend());
         this.nonPartitionedContext = getNonPartitionedContext();
+        partitionedContext.setNonPartitionedContext(nonPartitionedContext);
     }
 
     @Override
@@ -101,7 +103,7 @@ public class TwoInputBroadcastProcessOperator<IN1, IN2, OUT>
 
     protected NonPartitionedContext<OUT> getNonPartitionedContext() {
         return new DefaultNonPartitionedContext<>(
-                context, partitionedContext, collector, false, null);
+                context, partitionedContext, collector, false, null, output);
     }
 
     @Override

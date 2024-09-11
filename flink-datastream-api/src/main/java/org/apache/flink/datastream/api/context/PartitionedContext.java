@@ -19,16 +19,14 @@
 package org.apache.flink.datastream.api.context;
 
 import org.apache.flink.annotation.Experimental;
+import org.apache.flink.datastream.watermark.BasePartitionedContext;
 
 /**
  * On the base of {@link RuntimeContext}, {@link PartitionedContext} also contains all
  * partition-wise execution information, such as getting state, registering timer, etc.
  */
 @Experimental
-public interface PartitionedContext extends RuntimeContext {
-    /** Get the {@link StateManager} of this process function. */
-    StateManager getStateManager();
-
-    /** Get the {@link ProcessingTimeManager} of this process function. */
-    ProcessingTimeManager getProcessingTimeManager();
+public interface PartitionedContext extends BasePartitionedContext {
+    /** Represents the context associated with all operations must be applied to all partitions. */
+    NonPartitionedContext<?> getNonPartitionedContext();
 }

@@ -69,7 +69,8 @@ class DefaultNonPartitionedContextTest {
                                 new MockOperatorStateStore()),
                         collector,
                         false,
-                        null);
+                        null,
+                        null); // TODOJEY
         nonPartitionedContext.applyToAllPartitions(
                 (out, ctx) -> {
                     counter.incrementAndGet();
@@ -118,7 +119,8 @@ class DefaultNonPartitionedContextTest {
                                 new MockOperatorStateStore()),
                         collector,
                         true,
-                        allKeys);
+                        allKeys,
+                        null); // TODOJEY
         nonPartitionedContext.applyToAllPartitions(
                 (out, ctx) -> {
                     counter.incrementAndGet();
