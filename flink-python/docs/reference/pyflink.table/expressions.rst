@@ -151,6 +151,8 @@ arithmetic functions
     Expression.hex
     Expression.unhex
     Expression.truncate
+    Expression.shiftleft
+    Expression.shiftright
 
 string functions
 ----------------
