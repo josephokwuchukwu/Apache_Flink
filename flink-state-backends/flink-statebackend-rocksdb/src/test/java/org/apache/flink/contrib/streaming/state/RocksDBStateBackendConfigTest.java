@@ -33,11 +33,8 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.runtime.execution.Environment;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
-import org.apache.flink.runtime.query.KvStateRegistry;
-import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.CheckpointableKeyedStateBackend;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateBackendParametersImpl;
@@ -469,7 +466,6 @@ public class RocksDBStateBackendConfigTest {
         final MockEnvironment env = getMockEnvironment(dir1);
         JobID jobID = env.getJobID();
         KeyGroupRange keyGroupRange = new KeyGroupRange(0, 0);
-        TaskKvStateRegistry kvStateRegistry = env.getTaskKvStateRegistry();
         CloseableRegistry cancelStreamRegistry = new CloseableRegistry();
         RocksDBKeyedStateBackend<Integer> keyedBackend =
                 (RocksDBKeyedStateBackend<Integer>)
@@ -481,7 +477,6 @@ public class RocksDBStateBackendConfigTest {
                                         IntSerializer.INSTANCE,
                                         1,
                                         keyGroupRange,
-                                        kvStateRegistry,
                                         TtlTimeProvider.DEFAULT,
                                         (MetricGroup) new UnregisteredMetricsGroup(),
                                         Collections.emptyList(),
@@ -518,8 +513,6 @@ public class RocksDBStateBackendConfigTest {
             try {
                 JobID jobID = env.getJobID();
                 KeyGroupRange keyGroupRange = new KeyGroupRange(0, 0);
-                TaskKvStateRegistry kvStateRegistry =
-                        new KvStateRegistry().createTaskRegistry(env.getJobID(), new JobVertexID());
                 CloseableRegistry cancelStreamRegistry = new CloseableRegistry();
                 rocksDbBackend.createKeyedStateBackend(
                         new KeyedStateBackendParametersImpl<>(
@@ -529,7 +522,6 @@ public class RocksDBStateBackendConfigTest {
                                 IntSerializer.INSTANCE,
                                 1,
                                 keyGroupRange,
-                                kvStateRegistry,
                                 TtlTimeProvider.DEFAULT,
                                 (MetricGroup) new UnregisteredMetricsGroup(),
                                 Collections.emptyList(),
@@ -564,8 +556,6 @@ public class RocksDBStateBackendConfigTest {
             try {
                 JobID jobID = env.getJobID();
                 KeyGroupRange keyGroupRange = new KeyGroupRange(0, 0);
-                TaskKvStateRegistry kvStateRegistry =
-                        new KvStateRegistry().createTaskRegistry(env.getJobID(), new JobVertexID());
                 CloseableRegistry cancelStreamRegistry = new CloseableRegistry();
                 CheckpointableKeyedStateBackend<Integer> keyedStateBackend =
                         rocksDbBackend.createKeyedStateBackend(
@@ -576,7 +566,6 @@ public class RocksDBStateBackendConfigTest {
                                         IntSerializer.INSTANCE,
                                         1,
                                         keyGroupRange,
-                                        kvStateRegistry,
                                         TtlTimeProvider.DEFAULT,
                                         (MetricGroup) new UnregisteredMetricsGroup(),
                                         Collections.emptyList(),

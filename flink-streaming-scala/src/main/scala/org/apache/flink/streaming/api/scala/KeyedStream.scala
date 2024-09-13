@@ -19,15 +19,13 @@ package org.apache.flink.streaming.api.scala
 
 import org.apache.flink.annotation.{Internal, Public, PublicEvolving}
 import org.apache.flink.api.common.functions._
-import org.apache.flink.api.common.state.{ReducingStateDescriptor, ValueStateDescriptor}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.common.typeutils.TypeSerializer
-import org.apache.flink.streaming.api.datastream.{KeyedStream => KeyedJavaStream, QueryableStateStream, WindowedStream => WindowedJavaStream}
+import org.apache.flink.streaming.api.datastream.{KeyedStream => KeyedJavaStream, WindowedStream => WindowedJavaStream}
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.apache.flink.streaming.api.functions.aggregation.{AggregationFunction, ComparableAggregator, SumAggregator}
 import org.apache.flink.streaming.api.functions.aggregation.AggregationFunction.AggregationType
 import org.apache.flink.streaming.api.functions.co.ProcessJoinFunction
-import org.apache.flink.streaming.api.functions.query.{QueryableAppendingStateOperator, QueryableValueStateOperator}
 import org.apache.flink.streaming.api.scala.function.StatefulFunction
 import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
@@ -592,78 +590,6 @@ class KeyedStream[T, K](javaStream: KeyedJavaStream[T, K]) extends DataStream[T]
     }
 
     flatMap(flatMapper)
-  }
-
-  /**
-   * Publishes the keyed stream as a queryable ValueState instance.
-   *
-   * @param queryableStateName
-   *   Name under which to the publish the queryable state instance
-   * @return
-   *   Queryable state instance
-   */
-  @PublicEvolving
-  def asQueryableState(queryableStateName: String): QueryableStateStream[K, T] = {
-    val stateDescriptor =
-      new ValueStateDescriptor(
-        queryableStateName,
-        dataType.createSerializer(executionConfig.getSerializerConfig))
-
-    asQueryableState(queryableStateName, stateDescriptor)
-  }
-
-  /**
-   * Publishes the keyed stream as a queryable ValueState instance.
-   *
-   * @param queryableStateName
-   *   Name under which to the publish the queryable state instance
-   * @param stateDescriptor
-   *   State descriptor to create state instance from
-   * @return
-   *   Queryable state instance
-   */
-  @PublicEvolving
-  def asQueryableState(
-      queryableStateName: String,
-      stateDescriptor: ValueStateDescriptor[T]): QueryableStateStream[K, T] = {
-
-    transform(
-      s"Queryable state: $queryableStateName",
-      new QueryableValueStateOperator(queryableStateName, stateDescriptor))(dataType)
-
-    stateDescriptor.initializeSerializerUnlessSet(executionConfig)
-
-    new QueryableStateStream(
-      queryableStateName,
-      stateDescriptor,
-      getKeyType.createSerializer(executionConfig.getSerializerConfig))
-  }
-
-  /**
-   * Publishes the keyed stream as a queryable ReducingState instance.
-   *
-   * @param queryableStateName
-   *   Name under which to the publish the queryable state instance
-   * @param stateDescriptor
-   *   State descriptor to create state instance from
-   * @return
-   *   Queryable state instance
-   */
-  @PublicEvolving
-  def asQueryableState(
-      queryableStateName: String,
-      stateDescriptor: ReducingStateDescriptor[T]): QueryableStateStream[K, T] = {
-
-    transform(
-      s"Queryable state: $queryableStateName",
-      new QueryableAppendingStateOperator(queryableStateName, stateDescriptor))(dataType)
-
-    stateDescriptor.initializeSerializerUnlessSet(executionConfig)
-
-    new QueryableStateStream(
-      queryableStateName,
-      stateDescriptor,
-      getKeyType.createSerializer(executionConfig.getSerializerConfig))
   }
 
 }
