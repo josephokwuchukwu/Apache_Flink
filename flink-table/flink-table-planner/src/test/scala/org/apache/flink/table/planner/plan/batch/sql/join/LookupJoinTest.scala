@@ -21,26 +21,15 @@ import org.apache.flink.api.scala._
 import org.apache.flink.table.api._
 import org.apache.flink.table.api.config.OptimizerConfigOptions
 import org.apache.flink.table.planner.plan.optimize.program.FlinkBatchProgram
-import org.apache.flink.table.planner.plan.stream.sql.join.TestTemporalTable
 import org.apache.flink.table.planner.runtime.utils.JavaUserDefinedScalarFunctions.PythonScalarFunction
 import org.apache.flink.table.planner.utils.TableTestBase
-import org.apache.flink.testutils.junit.extensions.parameterized.{ParameterizedTestExtension, Parameters}
 
-import _root_.java.lang.{Boolean => JBoolean}
-import _root_.java.util.{Collection => JCollection}
-import _root_.scala.collection.JavaConversions._
 import org.assertj.core.api.Assertions.{assertThatExceptionOfType, assertThatThrownBy}
-import org.assertj.core.api.Assumptions.assumeThat
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
-import org.junit.jupiter.api.{BeforeEach, TestTemplate}
-import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.{BeforeEach, Test}
 
-/**
- * The physical plans for legacy [[org.apache.flink.table.sources.LookupableTableSource]] and new
- * [[org.apache.flink.table.connector.source.LookupTableSource]] should be identical.
- */
-@ExtendWith(Array(classOf[ParameterizedTestExtension]))
-class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
+/** Tests for lookup join. */
+class LookupJoinTest extends TableTestBase {
   private val testUtil = batchTestUtil()
 
   @BeforeEach
@@ -50,35 +39,31 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.addDataStream[(Int, String, Int)]("nonTemporal", 'id, 'name, 'age)
     val myTable = testUtil.tableEnv.sqlQuery("SELECT *, PROCTIME() as proctime FROM T0")
     testUtil.tableEnv.createTemporaryView("MyTable", myTable)
-    if (legacyTableSource) {
-      TestTemporalTable.createTemporaryTable(testUtil.tableEnv, "LookupTable", isBounded = true)
-    } else {
-      testUtil.addTable("""
-                          |CREATE TABLE LookupTable (
-                          |  `id` INT,
-                          |  `name` STRING,
-                          |  `age` INT
-                          |) WITH (
-                          |  'connector' = 'values',
-                          |  'bounded' = 'true'
-                          |)
-                          |""".stripMargin)
+    testUtil.addTable("""
+                        |CREATE TABLE LookupTable (
+                        |  `id` INT,
+                        |  `name` STRING,
+                        |  `age` INT
+                        |) WITH (
+                        |  'connector' = 'values',
+                        |  'bounded' = 'true'
+                        |)
+                        |""".stripMargin)
 
-      testUtil.addTable("""
-                          |CREATE TABLE LookupTableWithComputedColumn (
-                          |  `id` INT,
-                          |  `name` STRING,
-                          |  `age` INT,
-                          |  `nominal_age` as age + 1
-                          |) WITH (
-                          |  'connector' = 'values',
-                          |  'bounded' = 'true'
-                          |)
-                          |""".stripMargin)
-    }
+    testUtil.addTable("""
+                        |CREATE TABLE LookupTableWithComputedColumn (
+                        |  `id` INT,
+                        |  `name` STRING,
+                        |  `age` INT,
+                        |  `nominal_age` as age + 1
+                        |) WITH (
+                        |  'connector' = 'values',
+                        |  'bounded' = 'true'
+                        |)
+                        |""".stripMargin)
   }
 
-  @TestTemplate
+  @Test
   def testJoinInvalidJoinTemporalTable(): Unit = {
     // must follow a period specification
     expectExceptionThrown(
@@ -115,7 +100,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     )
   }
 
-  @TestTemplate
+  @Test
   def testNotDistinctFromInJoinCondition(): Unit = {
 
     // does not support join condition contains `IS NOT DISTINCT`
@@ -137,7 +122,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     )
   }
 
-  @TestTemplate
+  @Test
   def testPythonUDFInJoinCondition(): Unit = {
     testUtil.addTemporarySystemFunction("pyFunc", new PythonScalarFunction("pyFunc"))
     val sql =
@@ -154,7 +139,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
       .isInstanceOf[TableException]
   }
 
-  @TestTemplate
+  @Test
   def testLogicalPlan(): Unit = {
     val sql1 =
       """
@@ -183,7 +168,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyRelPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testLogicalPlanWithImplicitTypeCast(): Unit = {
     val programs = FlinkBatchProgram.buildProgram(testUtil.tableEnv.getConfig)
     programs.remove(FlinkBatchProgram.PHYSICAL)
@@ -199,21 +184,21 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
       .isInstanceOf[TableException]
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTable(): Unit = {
     val sql = "SELECT * FROM MyTable AS T JOIN LookupTable " +
       "FOR SYSTEM_TIME AS OF T.proctime AS D ON T.a = D.id"
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testLeftJoinTemporalTable(): Unit = {
     val sql = "SELECT * FROM MyTable AS T LEFT JOIN LookupTable " +
       "FOR SYSTEM_TIME AS OF T.proctime AS D ON T.a = D.id"
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithNestedQuery(): Unit = {
     val sql = "SELECT * FROM " +
       "(SELECT a, b, proctime FROM MyTable WHERE c > 1000) AS T " +
@@ -222,7 +207,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithProjectionPushDown(): Unit = {
     val sql =
       """
@@ -234,7 +219,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithFilterPushDown(): Unit = {
     val sql =
       """
@@ -246,7 +231,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testAvoidAggregatePushDown(): Unit = {
     val sql1 =
       """
@@ -272,7 +257,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithTrueCondition(): Unit = {
     val sql =
       """
@@ -288,10 +273,8 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
       .isInstanceOf[TableException]
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithComputedColumn(): Unit = {
-    // Computed column do not support in legacyTableSource.
-    assumeThat(legacyTableSource).isFalse
     val sql =
       """
         |SELECT
@@ -303,10 +286,8 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testJoinTemporalTableWithComputedColumnAndPushDown(): Unit = {
-    // Computed column do not support in legacyTableSource.
-    assumeThat(legacyTableSource).isFalse
     val sql =
       """
         |SELECT
@@ -318,7 +299,7 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
     testUtil.verifyExecPlan(sql)
   }
 
-  @TestTemplate
+  @Test
   def testReusing(): Unit = {
     testUtil.tableEnv.getConfig
       .set(OptimizerConfigOptions.TABLE_OPTIMIZER_REUSE_SUB_PLAN_ENABLED, Boolean.box(true))
@@ -368,12 +349,5 @@ class LookupJoinTest(legacyTableSource: Boolean) extends TableTestBase {
       assertThatExceptionOfType(clazz)
         .isThrownBy(callable)
     }
-  }
-}
-
-object LookupJoinTest {
-  @Parameters(name = "LegacyTableSource={0}")
-  def parameters(): JCollection[Array[Object]] = {
-    Seq[Array[AnyRef]](Array(JBoolean.TRUE), Array(JBoolean.FALSE))
   }
 }

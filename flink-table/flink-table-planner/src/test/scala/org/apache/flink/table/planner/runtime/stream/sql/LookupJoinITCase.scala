@@ -18,7 +18,6 @@
 package org.apache.flink.table.planner.runtime.stream.sql
 
 import org.apache.flink.api.scala._
-import org.apache.flink.table.api._
 import org.apache.flink.table.api.bridge.scala._
 import org.apache.flink.table.api.config.OptimizerConfigOptions
 import org.apache.flink.table.connector.source.lookup.LookupOptions
@@ -26,7 +25,7 @@ import org.apache.flink.table.connector.source.lookup.LookupOptions.{LookupCache
 import org.apache.flink.table.data.GenericRowData
 import org.apache.flink.table.data.binary.BinaryStringData
 import org.apache.flink.table.planner.factories.TestValuesTableFactory
-import org.apache.flink.table.planner.runtime.utils.{InMemoryLookupableTableSource, StreamingTestBase, TestingAppendSink, TestingRetractSink}
+import org.apache.flink.table.planner.runtime.utils.{StreamingTestBase, TestingAppendSink, TestingRetractSink}
 import org.apache.flink.table.planner.runtime.utils.UserDefinedFunctionTestUtils.TestAddWithOpen
 import org.apache.flink.table.runtime.functions.table.fullcache.inputformat.FullCacheTestInputFormat
 import org.apache.flink.table.runtime.functions.table.lookup.LookupCacheManager
@@ -38,15 +37,13 @@ import org.assertj.core.api.IterableAssert.assertThatIterable
 import org.junit.jupiter.api.{AfterEach, BeforeEach, TestTemplate}
 import org.junit.jupiter.api.extension.ExtendWith
 
-import java.lang.{Boolean => JBoolean}
 import java.time.LocalDateTime
 import java.util.{Collection => JCollection}
 
 import scala.collection.JavaConversions._
 
 @ExtendWith(Array(classOf[ParameterizedTestExtension]))
-class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
-  extends StreamingTestBase {
+class LookupJoinITCase(cacheType: LookupCacheType) extends StreamingTestBase {
 
   val data = List(
     rowOf(1L, 12, "Julian"),
@@ -77,12 +74,8 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
   @BeforeEach
   override def before(): Unit = {
     super.before()
-    if (legacyTableSource) {
-      InMemoryLookupableTableSource.RESOURCE_COUNTER.set(0)
-    } else {
-      TestValuesTableFactory.RESOURCE_COUNTER.set(0)
-      FullCacheTestInputFormat.OPEN_CLOSED_COUNTER.set(0)
-    }
+    TestValuesTableFactory.RESOURCE_COUNTER.set(0)
+    FullCacheTestInputFormat.OPEN_CLOSED_COUNTER.set(0)
     createScanTable("src", data)
     createScanTable("nullable_src", dataWithNull)
     createLookupTable("user_table", userData)
@@ -96,95 +89,65 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
 
   @AfterEach
   override def after(): Unit = {
-    if (legacyTableSource) {
-      assertThat(InMemoryLookupableTableSource.RESOURCE_COUNTER.get()).isZero
-    } else {
-      assertThat(TestValuesTableFactory.RESOURCE_COUNTER.get()).isZero
-      assertThat(FullCacheTestInputFormat.OPEN_CLOSED_COUNTER.get()).isZero
-    }
+    assertThat(TestValuesTableFactory.RESOURCE_COUNTER.get()).isZero
+    assertThat(FullCacheTestInputFormat.OPEN_CLOSED_COUNTER.get()).isZero
   }
 
-  /** The lookupThreshold only works for new table source (not legacyTableSource). */
   private def createLookupTable(
       tableName: String,
       data: List[Row],
       lookupThreshold: Int = -1): Unit = {
-    if (legacyTableSource) {
-      val userSchema = TableSchema
-        .builder()
-        .field("age", Types.INT)
-        .field("id", Types.LONG)
-        .field("name", Types.STRING)
-        .build()
-      InMemoryLookupableTableSource.createTemporaryTable(
-        tEnv,
-        isAsync = false,
-        data,
-        userSchema,
-        tableName)
-    } else {
-      val dataId = TestValuesTableFactory.registerData(data)
-      val cacheOptions =
-        if (cacheType == LookupCacheType.PARTIAL)
-          s"""
-             |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.PARTIAL}',
-             |  '${LookupOptions.PARTIAL_CACHE_MAX_ROWS.key()}' = '${Long.MaxValue}',
-             |""".stripMargin
-        else if (cacheType == LookupCacheType.FULL)
-          s"""
-             |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.FULL}',
-             |  '${LookupOptions.FULL_CACHE_RELOAD_STRATEGY.key()}' = '${ReloadStrategy.PERIODIC}',
-             |  '${LookupOptions.FULL_CACHE_PERIODIC_RELOAD_INTERVAL.key()}' = '${Long.MaxValue}',
-             |""".stripMargin
-        else ""
-      val lookupThresholdOption = if (lookupThreshold > 0) {
-        s"'start-lookup-threshold'='$lookupThreshold',"
-      } else ""
+    val dataId = TestValuesTableFactory.registerData(data)
+    val cacheOptions = getCacheOptions()
+    val lookupThresholdOption = if (lookupThreshold > 0) {
+      s"'start-lookup-threshold'='$lookupThreshold',"
+    } else ""
 
-      tEnv.executeSql(s"""
-                         |CREATE TABLE $tableName (
-                         |  `age` INT,
-                         |  `id` BIGINT,
-                         |  `name` STRING
-                         |) WITH (
-                         |  $cacheOptions
-                         |  $lookupThresholdOption
-                         |  'connector' = 'values',
-                         |  'data-id' = '$dataId'
-                         |)
-                         |""".stripMargin)
-    }
+    tEnv.executeSql(s"""
+                       |CREATE TABLE $tableName (
+                       |  `age` INT,
+                       |  `id` BIGINT,
+                       |  `name` STRING
+                       |) WITH (
+                       |  $cacheOptions
+                       |  $lookupThresholdOption
+                       |  'connector' = 'values',
+                       |  'data-id' = '$dataId'
+                       |)
+                       |""".stripMargin)
   }
 
   private def createLookupTableWithComputedColumn(tableName: String, data: List[Row]): Unit = {
-    if (!legacyTableSource) {
-      val dataId = TestValuesTableFactory.registerData(data)
-      val cacheOptions =
-        if (cacheType == LookupCacheType.PARTIAL)
-          s"""
-             |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.PARTIAL}',
-             |  '${LookupOptions.PARTIAL_CACHE_MAX_ROWS.key()}' = '${Long.MaxValue}',
-             |""".stripMargin
-        else if (cacheType == LookupCacheType.FULL)
-          s"""
-             |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.FULL}',
-             |  '${LookupOptions.FULL_CACHE_RELOAD_STRATEGY.key()}' = '${ReloadStrategy.PERIODIC}',
-             |  '${LookupOptions.FULL_CACHE_PERIODIC_RELOAD_INTERVAL.key()}' = '${Long.MaxValue}',
-             |""".stripMargin
-        else ""
-      tEnv.executeSql(s"""
-                         |CREATE TABLE $tableName (
-                         |  `age` INT,
-                         |  `id` BIGINT,
-                         |  `name` STRING,
-                         |  `nominal_age` as age + 1
-                         |) WITH (
-                         |  $cacheOptions
-                         |  'connector' = 'values',
-                         |  'data-id' = '$dataId'
-                         |)
-                         |""".stripMargin)
-    }
+    val dataId = TestValuesTableFactory.registerData(data)
+    val cacheOptions = getCacheOptions()
+
+    tEnv.executeSql(s"""
+                       |CREATE TABLE $tableName (
+                       |  `age` INT,
+                       |  `id` BIGINT,
+                       |  `name` STRING,
+                       |  `nominal_age` as age + 1
+                       |) WITH (
+                       |  $cacheOptions
+                       |  'connector' = 'values',
+                       |  'data-id' = '$dataId'
+                       |)
+                       |""".stripMargin)
+  }
+
+  private def getCacheOptions(): String = {
+    if (cacheType == LookupCacheType.PARTIAL) {
+      s"""
+         |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.PARTIAL}',
+         |  '${LookupOptions.PARTIAL_CACHE_MAX_ROWS.key()}' = '${Long.MaxValue}',
+         |""".stripMargin
+    } else if (cacheType == LookupCacheType.FULL) {
+      s"""
+         |  '${LookupOptions.CACHE_TYPE.key()}' = '${LookupCacheType.FULL}',
+         |  '${LookupOptions.FULL_CACHE_RELOAD_STRATEGY.key()}' = '${ReloadStrategy.PERIODIC}',
+         |  '${LookupOptions.FULL_CACHE_PERIODIC_RELOAD_INTERVAL.key()}' = '${Long.MaxValue}',
+         |""".stripMargin
+    } else { "" }
   }
 
   private def createScanTable(tableName: String, data: List[Row]): Unit = {
@@ -541,10 +504,6 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
 
   @TestTemplate
   def testJoinTemporalTableWithComputedColumn(): Unit = {
-    if (legacyTableSource) {
-      // Computed column do not support in legacyTableSource.
-      return
-    }
     val sql = s"SELECT T.id, T.len, T.content, D.name, D.age, D.nominal_age " +
       "FROM src AS T JOIN userTableWithComputedColumn " +
       "for system_time as of T.proctime AS D ON T.id = D.id"
@@ -560,10 +519,6 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
 
   @TestTemplate
   def testJoinTemporalTableWithComputedColumnAndPushDown(): Unit = {
-    if (legacyTableSource) {
-      // Computed column do not support in legacyTableSource.
-      return
-    }
     val sql = s"SELECT T.id, T.len, T.content, D.name, D.age, D.nominal_age " +
       "FROM src AS T JOIN userTableWithComputedColumn " +
       "for system_time as of T.proctime AS D ON T.id = D.id and D.nominal_age > 12"
@@ -808,7 +763,7 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
       .addSink(sink)
     env.execute()
 
-    val expected = if (legacyTableSource || cacheType == LookupCacheType.FULL) {
+    val expected = if (cacheType == LookupCacheType.FULL) {
       // legacy lookup source and full caching lookup do not support retry
       Seq("1,12,Julian,Julian", "2,15,Hello,Jark", "3,15,Fabian,Fabian")
     } else {
@@ -860,16 +815,13 @@ class LookupJoinITCase(legacyTableSource: Boolean, cacheType: LookupCacheType)
 
 object LookupJoinITCase {
 
-  val LEGACY_TABLE_SOURCE: JBoolean = JBoolean.TRUE;
-  val DYNAMIC_TABLE_SOURCE: JBoolean = JBoolean.FALSE;
-
-  @Parameters(name = "LegacyTableSource={0}, cacheType={1}")
+  @Parameters(name = "CacheType={0}")
   def parameters(): JCollection[Array[Object]] = {
     Seq[Array[AnyRef]](
-      Array(LEGACY_TABLE_SOURCE, LookupCacheType.NONE),
-      Array(DYNAMIC_TABLE_SOURCE, LookupCacheType.NONE),
-      Array(DYNAMIC_TABLE_SOURCE, LookupCacheType.PARTIAL),
-      Array(DYNAMIC_TABLE_SOURCE, LookupCacheType.FULL)
+      Array(LookupCacheType.NONE),
+      Array(LookupCacheType.NONE),
+      Array(LookupCacheType.PARTIAL),
+      Array(LookupCacheType.FULL)
     )
   }
 }
