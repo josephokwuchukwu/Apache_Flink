@@ -26,20 +26,26 @@ import org.apache.flink.util.concurrent.FutureUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 /** {@code TestingResourceCleanerFactory} for adding custom {@link ResourceCleaner} creation. */
 public class TestingResourceCleanerFactory implements ResourceCleanerFactory {
 
     private final Collection<LocallyCleanableResource> locallyCleanableResources;
+    private Collection<LocallyCleanableResourceWithMainThread>
+            locallyCleanableResourceWithMainThreads;
     private final Collection<GloballyCleanableResource> globallyCleanableResources;
 
     private final Executor cleanupExecutor;
 
     private TestingResourceCleanerFactory(
             Collection<LocallyCleanableResource> locallyCleanableResources,
+            Collection<LocallyCleanableResourceWithMainThread>
+                    locallyCleanableResourceWithMainThreads,
             Collection<GloballyCleanableResource> globallyCleanableResources,
             Executor cleanupExecutor) {
         this.locallyCleanableResources = locallyCleanableResources;
+        this.locallyCleanableResourceWithMainThreads = locallyCleanableResourceWithMainThreads;
         this.globallyCleanableResources = globallyCleanableResources;
         this.cleanupExecutor = cleanupExecutor;
     }
@@ -47,6 +53,14 @@ public class TestingResourceCleanerFactory implements ResourceCleanerFactory {
     @Override
     public ResourceCleaner createLocalResourceCleaner(
             ComponentMainThreadExecutor mainThreadExecutor) {
+        Collection<LocallyCleanableResource> locallyCleanableResources =
+                this.locallyCleanableResources;
+
+        locallyCleanableResources.addAll(
+                locallyCleanableResourceWithMainThreads.stream()
+                        .map(r -> r.toLocallyCleanableResource(mainThreadExecutor))
+                        .collect(Collectors.toList()));
+
         return createResourceCleaner(
                 mainThreadExecutor,
                 locallyCleanableResources,
@@ -89,21 +103,30 @@ public class TestingResourceCleanerFactory implements ResourceCleanerFactory {
     /** {@code Builder} for creating {@code TestingResourceCleanerFactory} instances. */
     public static class Builder {
 
-        private Collection<LocallyCleanableResource> locallyCleanableResources = new ArrayList<>();
+        private Collection<LocallyCleanableResource> locallyCleanableResource = new ArrayList<>();
+        private Collection<LocallyCleanableResourceWithMainThread>
+                locallyCleanableResourceWithMainThreads = new ArrayList<>();
         private Collection<GloballyCleanableResource> globallyCleanableResources =
                 new ArrayList<>();
 
         private Executor cleanupExecutor = Executors.directExecutor();
 
-        public Builder setLocallyCleanableResources(
-                Collection<LocallyCleanableResource> locallyCleanableResources) {
-            this.locallyCleanableResources = locallyCleanableResources;
+        public Builder setLocallyCleanableInMainThreadResource(
+                Collection<LocallyCleanableResourceWithMainThread>
+                        locallyCleanableResourceWithMainThread) {
+            this.locallyCleanableResource = locallyCleanableResource;
             return this;
         }
 
         public Builder withLocallyCleanableResource(
                 LocallyCleanableResource locallyCleanableResource) {
-            this.locallyCleanableResources.add(locallyCleanableResource);
+            this.locallyCleanableResource.add(locallyCleanableResource);
+            return this;
+        }
+
+        public Builder withLocallyCleanableInMainThreadResource(
+                LocallyCleanableResourceWithMainThread locallyCleanableResource) {
+            this.locallyCleanableResourceWithMainThreads.add(locallyCleanableResource);
             return this;
         }
 
@@ -126,7 +149,10 @@ public class TestingResourceCleanerFactory implements ResourceCleanerFactory {
 
         public TestingResourceCleanerFactory build() {
             return new TestingResourceCleanerFactory(
-                    locallyCleanableResources, globallyCleanableResources, cleanupExecutor);
+                    locallyCleanableResource,
+                    locallyCleanableResourceWithMainThreads,
+                    globallyCleanableResources,
+                    cleanupExecutor);
         }
     }
 }
