@@ -1017,6 +1017,19 @@ class Expression(Generic[T]):
         """
         return _unary_op("unhex")(self)
 
+    def conv(self, from_base, to_base) -> 'Expression':
+        """
+        Converts num from from_base to to_base. The function supports base 2 to base 36, from_base
+        in [2, 36], ABS(to_base) in [2,36].
+
+        null if any of the arguments are null or num invalid or base invalid.
+
+        :param from_base: An INTEGER expression.
+        :param to_base: An INTEGER expression.
+        :return: A STRING representation of the converted num.
+        """
+        return _ternary_op("conv")(self, from_base, to_base)
+
     def truncate(self, n: Union[int, 'Expression[int]'] = 0) -> 'Expression[T]':
         """
         Returns a number of truncated to n decimal places.
