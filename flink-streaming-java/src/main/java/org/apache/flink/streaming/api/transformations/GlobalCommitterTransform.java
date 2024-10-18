@@ -26,10 +26,9 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.streaming.api.connector.sink2.CommittableMessage;
 import org.apache.flink.streaming.api.connector.sink2.StandardSinkTopologies;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.util.function.SerializableSupplier;
 
-import org.apache.flink.shaded.guava32.com.google.common.collect.Lists;
+import org.apache.flink.shaded.guava31.com.google.common.collect.Lists;
 
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +41,7 @@ import java.util.List;
  * @param <CommT>
  */
 @Internal
-public class GlobalCommitterTransform<CommT> extends TransformationWithLineage<Void> {
+public class GlobalCommitterTransform<CommT> extends Transformation<Void> {
 
     private final DataStream<CommittableMessage<CommT>> inputStream;
     private final SerializableSupplier<Committer<CommT>> committerFactory;
@@ -57,9 +56,6 @@ public class GlobalCommitterTransform<CommT> extends TransformationWithLineage<V
         this.committerFactory = committerFactory;
         this.committableSerializer = committableSerializer;
     }
-
-    @Override
-    public void setChainingStrategy(ChainingStrategy strategy) {}
 
     @Override
     protected List<Transformation<?>> getTransitivePredecessorsInternal() {
