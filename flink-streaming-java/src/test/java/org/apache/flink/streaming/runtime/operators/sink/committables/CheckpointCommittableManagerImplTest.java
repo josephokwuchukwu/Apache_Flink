@@ -23,7 +23,6 @@ import org.apache.flink.metrics.groups.SinkCommitterMetricGroup;
 import org.apache.flink.runtime.metrics.groups.MetricsGroupTestUtils;
 import org.apache.flink.streaming.api.connector.sink2.CommittableSummary;
 import org.apache.flink.streaming.api.connector.sink2.CommittableWithLineage;
-import org.apache.flink.streaming.api.connector.sink2.SinkV2Assertions;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,32 +30,32 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CheckpointCommittableManagerImplTest {
 
     private static final SinkCommitterMetricGroup METRIC_GROUP =
             MetricsGroupTestUtils.mockCommitterMetricGroup();
+    private static final int MAX_RETRIES = 1;
 
     @Test
     void testAddSummary() {
         final CheckpointCommittableManagerImpl<Integer> checkpointCommittables =
-                new CheckpointCommittableManagerImpl<>(2, 1, 1L, METRIC_GROUP);
+                new CheckpointCommittableManagerImpl<>(new HashMap<>(), 1, 1L, METRIC_GROUP);
         assertThat(checkpointCommittables.getSubtaskCommittableManagers()).isEmpty();
 
         final CommittableSummary<Integer> first = new CommittableSummary<>(1, 1, 1L, 1, 0, 0);
         checkpointCommittables.addSummary(first);
         assertThat(checkpointCommittables.getSubtaskCommittableManagers())
-                .hasSize(1)
-                .satisfiesExactly(
-                        (s) -> {
-                            assertThat(s.getSubtaskId()).isEqualTo(2);
-                            assertThat(s.getCheckpointId()).isEqualTo(1L);
-                            assertThat(s.getNumPending()).isEqualTo(1);
-                            assertThat(s.getNumFailed()).isEqualTo(0);
-                        });
+                .singleElement()
+                .returns(1, SubtaskCommittableManager::getSubtaskId)
+                .returns(1L, SubtaskCommittableManager::getCheckpointId)
+                .returns(1, SubtaskCommittableManager::getNumPending)
+                .returns(0, SubtaskCommittableManager::getNumFailed);
 
         // Add different subtask id
         final CommittableSummary<Integer> third = new CommittableSummary<>(2, 1, 2L, 2, 1, 1);
@@ -67,7 +66,7 @@ class CheckpointCommittableManagerImplTest {
     @Test
     void testCommit() throws IOException, InterruptedException {
         final CheckpointCommittableManagerImpl<Integer> checkpointCommittables =
-                new CheckpointCommittableManagerImpl<>(1, 1, 1L, METRIC_GROUP);
+                new CheckpointCommittableManagerImpl<>(new HashMap<>(), 1, 1L, METRIC_GROUP);
         checkpointCommittables.addSummary(new CommittableSummary<>(1, 1, 1L, 1, 0, 0));
         checkpointCommittables.addSummary(new CommittableSummary<>(2, 1, 1L, 2, 0, 0));
         checkpointCommittables.addCommittable(new CommittableWithLineage<>(3, 1L, 1));
@@ -75,27 +74,27 @@ class CheckpointCommittableManagerImplTest {
 
         final Committer<Integer> committer = new NoOpCommitter();
         // Only commit fully received committables
-        assertThat(checkpointCommittables.commit(committer))
-                .hasSize(1)
-                .satisfiesExactly(c -> assertThat(c.getCommittable()).isEqualTo(3));
+        assertThatCode(() -> checkpointCommittables.commit(committer, MAX_RETRIES))
+                .hasMessageContaining("Trying to commit incomplete batch of committables");
 
         // Even on retry
-        assertThat(checkpointCommittables.commit(committer)).isEmpty();
+        assertThatCode(() -> checkpointCommittables.commit(committer, MAX_RETRIES))
+                .hasMessageContaining("Trying to commit incomplete batch of committables");
 
         // Add missing committable
         checkpointCommittables.addCommittable(new CommittableWithLineage<>(5, 1L, 2));
         // Commit all committables
-        assertThat(checkpointCommittables.commit(committer))
-                .hasSize(2)
-                .satisfiesExactly(
-                        c -> assertThat(c.getCommittable()).isEqualTo(4),
-                        c -> assertThat(c.getCommittable()).isEqualTo(5));
+        assertThatCode(() -> checkpointCommittables.commit(committer, MAX_RETRIES))
+                .doesNotThrowAnyException();
+        assertThat(checkpointCommittables.getSuccessfulCommittables())
+                .hasSize(3)
+                .containsExactlyInAnyOrder(3, 4, 5);
     }
 
     @Test
     void testUpdateCommittableSummary() {
         final CheckpointCommittableManagerImpl<Integer> checkpointCommittables =
-                new CheckpointCommittableManagerImpl<>(1, 1, 1L, METRIC_GROUP);
+                new CheckpointCommittableManagerImpl<>(new HashMap<>(), 1, 1L, METRIC_GROUP);
         checkpointCommittables.addSummary(new CommittableSummary<>(1, 1, 1L, 1, 0, 0));
         assertThatThrownBy(
                         () ->
@@ -113,17 +112,16 @@ class CheckpointCommittableManagerImplTest {
 
         final CheckpointCommittableManagerImpl<Integer> original =
                 new CheckpointCommittableManagerImpl<>(
-                        subtaskId, numberOfSubtasks, checkpointId, METRIC_GROUP);
+                        new HashMap<>(), numberOfSubtasks, checkpointId, METRIC_GROUP);
         original.addSummary(
                 new CommittableSummary<>(subtaskId, numberOfSubtasks, checkpointId, 1, 0, 0));
 
         CheckpointCommittableManagerImpl<Integer> copy = original.copy();
 
         assertThat(copy.getCheckpointId()).isEqualTo(checkpointId);
-        SinkV2Assertions.assertThat(copy.getSummary())
-                .hasNumberOfSubtasks(numberOfSubtasks)
-                .hasSubtaskId(subtaskId)
-                .hasCheckpointId(checkpointId);
+        assertThat(copy)
+                .returns(numberOfSubtasks, CheckpointCommittableManagerImpl::getNumberOfSubtasks)
+                .returns(checkpointId, CheckpointCommittableManagerImpl::getCheckpointId);
     }
 
     private static class NoOpCommitter implements Committer<Integer> {
