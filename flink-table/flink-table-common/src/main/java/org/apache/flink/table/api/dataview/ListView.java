@@ -182,4 +182,9 @@ public class ListView<T> implements DataView {
                 ListView.class,
                 DataTypes.FIELD("list", DataTypes.ARRAY(elementDataType).bridgedTo(List.class)));
     }
+
+    /**
+     * {@code ListView(TypeInformation<?> elementType)} method was deprecated and then removed.
+     * Please use a {@link DataTypeHint} instead.
+     */
 }
