@@ -133,7 +133,7 @@ class DefaultStreamGraphSchedulingContextTest {
             int sourceMaxParallelism,
             int sinkParallelism,
             int sinkMaxParallelism) {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamExecutionEnvironment env = new StreamExecutionEnvironment();
         env.fromSequence(0L, 1L).disableChaining().print();
         StreamGraph streamGraph = env.getStreamGraph();
 

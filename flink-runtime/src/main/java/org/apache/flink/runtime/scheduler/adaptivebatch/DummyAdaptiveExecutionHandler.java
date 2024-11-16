@@ -25,6 +25,9 @@ import org.apache.flink.runtime.jobgraph.forwardgroup.ForwardGroupComputeUtil;
 import org.apache.flink.runtime.jobgraph.forwardgroup.JobVertexForwardGroup;
 import org.apache.flink.runtime.jobmaster.event.JobEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -33,6 +36,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 /** A dummy implementation of {@link AdaptiveExecutionHandler}. */
 public class DummyAdaptiveExecutionHandler implements AdaptiveExecutionHandler {
 
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private final JobGraph jobGraph;
     private final Map<JobVertexID, JobVertexForwardGroup> forwardGroupsByJobVertexId;
 
