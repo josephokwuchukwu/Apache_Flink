@@ -227,7 +227,7 @@ public class AdaptiveGraphManager implements AdaptiveGraphGenerator {
         return intermediateDataSetIdToProducerMap.get(intermediateDataSetID);
     }
 
-    private Optional<JobVertexID> findVertexByStreamNodeId(int streamNodeId) {
+    public Optional<JobVertexID> findVertexByStreamNodeId(int streamNodeId) {
         if (frozenNodeToStartNodeMap.containsKey(streamNodeId)) {
             Integer startNodeId = frozenNodeToStartNodeMap.get(streamNodeId);
             return Optional.of(jobVerticesCache.get(startNodeId).getID());
@@ -693,5 +693,9 @@ public class AdaptiveGraphManager implements AdaptiveGraphGenerator {
             }
         }
         return true;
+    }
+
+    public void updateStreamNodeParallelism(int streamNodeId, int newParallelism) {
+        streamGraph.getStreamNode(streamNodeId).setParallelism(newParallelism);
     }
 }
