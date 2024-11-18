@@ -60,7 +60,7 @@ class TextFormatStatisticsReportUtilTest {
     }
 
     @Test
-    void testEstimateTableStatisticsCase1() throws IOException {
+    void testEstimateTableStatistics() throws IOException {
         // Create sample files for testing
         File tempFile = TempDirUtils.newFile(temporaryFolder, "flink_test_file.txt");
 
@@ -72,14 +72,14 @@ class TextFormatStatisticsReportUtilTest {
         TableStats stats =
                 TextFormatStatisticsReportUtil.estimateTableStatistics(
                         files, producedDataType, hadoopConfig);
-        assertEquals(0, stats.getRowCount());
+        assertEquals(1, stats.getRowCount());
         for (int i = 0; i < 10; ++i) {
             Files.write(tempFile.toPath(), sampleString.getBytes(), APPEND);
         }
         stats =
                 TextFormatStatisticsReportUtil.estimateTableStatistics(
                         files, producedDataType, hadoopConfig);
-        assertEquals(3, stats.getRowCount());
+        assertEquals(4, stats.getRowCount());
     }
 
     @Test

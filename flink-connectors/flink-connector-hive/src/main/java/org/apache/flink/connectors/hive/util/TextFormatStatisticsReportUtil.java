@@ -22,9 +22,11 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.table.plan.stats.TableStats;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.ArrayType;
+import org.apache.flink.table.types.logical.IntType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.table.types.logical.MapType;
+import org.apache.flink.table.types.logical.MultisetType;
 import org.apache.flink.table.types.logical.RowType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -43,11 +45,11 @@ public class TextFormatStatisticsReportUtil {
         try {
             long rowCount;
             RowType rowType = (RowType) producedDataType.getLogicalType();
-            double totalFileSize = 0.0;
+            long totalFileSize = 0L;
             for (Path file : files) {
                 totalFileSize += getTextFileSize(hadoopConfig, file);
             }
-            rowCount = (long) (totalFileSize / estimateRowSize(rowType));
+            rowCount = (long) Math.ceil(totalFileSize / estimateRowSize(rowType));
             return new TableStats(rowCount);
         } catch (Exception e) {
             LOG.warn("Estimating statistics failed for text format: {}", e.getMessage());
@@ -55,8 +57,8 @@ public class TextFormatStatisticsReportUtil {
         }
     }
 
-    private static int estimateRowSize(RowType rowType) {
-        int rowSize = 0;
+    private static double estimateRowSize(RowType rowType) {
+        double rowSize = 0.0;
         for (int index = 0; index < rowType.getFieldCount(); ++index) {
             LogicalType logicalType = rowType.getTypeAt(index);
             rowSize += getAverageTypeValueSize(logicalType);
@@ -64,16 +66,23 @@ public class TextFormatStatisticsReportUtil {
         return rowSize;
     }
 
-    /** Estimation rules based on Hive field types. */
+    /**
+     * Estimation rules based on Hive field types, draws inspiration from
+     * FlinkRelMdSize#averageTypeValueSize.
+     */
     private static double getAverageTypeValueSize(LogicalType logicalType) {
         LogicalTypeRoot typeRoot = logicalType.getTypeRoot();
         switch (typeRoot) {
             case CHAR:
             case TINYINT:
+            case BOOLEAN:
                 return 1;
             case VARCHAR:
             case DATE:
             case TIMESTAMP_WITHOUT_TIME_ZONE:
+            case TIMESTAMP_WITH_TIME_ZONE:
+            case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+            case TIME_WITHOUT_TIME_ZONE:
             case DECIMAL:
                 return 12;
             case SMALLINT:
@@ -86,6 +95,7 @@ public class TextFormatStatisticsReportUtil {
             case DOUBLE:
             case INTERVAL_YEAR_MONTH:
                 return 8;
+            case BINARY:
             case VARBINARY:
                 return 16;
             case ARRAY:
@@ -95,7 +105,15 @@ public class TextFormatStatisticsReportUtil {
                                 + getAverageTypeValueSize(((MapType) logicalType).getValueType()))
                         * 16;
             case ROW:
-                return estimateRowSize((RowType) logicalType);
+            case DISTINCT_TYPE:
+            case STRUCTURED_TYPE:
+                return logicalType.getChildren().stream()
+                        .map(TextFormatStatisticsReportUtil::getAverageTypeValueSize)
+                        .reduce(0.0, Double::sum);
+            case MULTISET:
+                return (getAverageTypeValueSize(((MultisetType) logicalType).getElementType())
+                                + getAverageTypeValueSize(new IntType()))
+                        * 16;
             default:
                 // For unknown data types, we use a smaller data size for estimation.
                 return 8;
