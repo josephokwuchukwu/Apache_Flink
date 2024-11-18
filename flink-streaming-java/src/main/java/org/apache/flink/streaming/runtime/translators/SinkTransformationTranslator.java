@@ -50,6 +50,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -59,6 +60,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.apache.flink.util.Preconditions.checkState;
 
@@ -175,7 +178,11 @@ public class SinkTransformationTranslator<Input, Output>
                         sink instanceof SupportsConcurrentExecutionAttempts);
             }
 
-            getSinkTransformations(sizeBefore).forEach(context::transform);
+            repeatUntilConverged(
+                    () ->
+                            getSinkTransformations(sizeBefore).stream()
+                                    .flatMap(t -> context.transform(t).stream())
+                                    .collect(Collectors.toList()));
 
             disallowUnalignedCheckpoint(getSinkTransformations(sizeBefore));
 
@@ -188,10 +195,19 @@ public class SinkTransformationTranslator<Input, Output>
             }
         }
 
+        private <R> void repeatUntilConverged(Supplier<R> producer) {
+            R lastResult = producer.get();
+            R nextResult;
+            while (!lastResult.equals(nextResult = producer.get())) {
+                lastResult = nextResult;
+            }
+        }
+
         private List<Transformation<?>> getSinkTransformations(int sizeBefore) {
-            return executionEnvironment
-                    .getTransformations()
-                    .subList(sizeBefore, executionEnvironment.getTransformations().size());
+            return new ArrayList<>(
+                    executionEnvironment
+                            .getTransformations()
+                            .subList(sizeBefore, executionEnvironment.getTransformations().size()));
         }
 
         /**

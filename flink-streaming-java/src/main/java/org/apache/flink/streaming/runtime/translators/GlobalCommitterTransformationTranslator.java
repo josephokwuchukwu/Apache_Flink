@@ -34,6 +34,7 @@ import org.apache.flink.streaming.runtime.operators.sink.CommitterOperatorFactor
 import org.apache.flink.streaming.runtime.operators.sink.SinkWriterOperatorFactory;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -74,11 +75,10 @@ public class GlobalCommitterTransformationTranslator<CommT>
         boolean commitOnInput = batch || !checkpointingEnabled || hasUpstreamCommitter(inputStream);
 
         // Create a global shuffle and add the global committer with parallelism 1.
+        DataStream<CommittableMessage<CommT>> global = inputStream.global();
         final PhysicalTransformation<Void> transformation =
                 (PhysicalTransformation<Void>)
-                        inputStream
-                                .global()
-                                .transform(
+                        global.transform(
                                         GLOBAL_COMMITTER_TRANSFORMATION_NAME,
                                         Types.VOID,
                                         new GlobalCommitterOperator<>(
@@ -87,10 +87,13 @@ public class GlobalCommitterTransformationTranslator<CommT>
                                                 commitOnInput))
                                 .getTransformation();
         transformation.setChainingStrategy(ChainingStrategy.ALWAYS);
-        transformation.setName(GLOBAL_COMMITTER_TRANSFORMATION_NAME);
         transformation.setParallelism(1);
         transformation.setMaxParallelism(1);
-        return Collections.emptyList();
+        transformation.setName(globalCommitterTransform.getName());
+        transformation.setUid(globalCommitterTransform.getUid());
+        transformation.setUidHash(globalCommitterTransform.getUserProvidedNodeHash());
+
+        return Arrays.asList(global.getId(), transformation.getId());
     }
 
     /**
