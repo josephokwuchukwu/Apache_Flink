@@ -94,17 +94,23 @@ abstract class AbstractSlotSharingStrategy
     /**
      * The vertices are topologically sorted since {@link DefaultExecutionTopology#getVertices} are
      * topologically sorted.
+     *
+     * @param topology The job topology.
+     * @param executionVertexIdentifierMapper The vertex identifier mapper function to convert a
+     *     execution vertex to a target identifier.
+     * @return The vertices identifiers in topologically order.
+     * @param <T> The type of the execution vertex identifier.
      */
     @Nonnull
     static <T> LinkedHashMap<JobVertexID, List<T>> getExecutionVertices(
             SchedulingTopology topology,
-            Function<SchedulingExecutionVertex, T> executionVertexMapper) {
+            Function<SchedulingExecutionVertex, T> executionVertexIdentifierMapper) {
         final LinkedHashMap<JobVertexID, List<T>> vertices = new LinkedHashMap<>();
         for (SchedulingExecutionVertex executionVertex : topology.getVertices()) {
             final List<T> executionVertexGroup =
                     vertices.computeIfAbsent(
                             executionVertex.getId().getJobVertexId(), k -> new ArrayList<>());
-            executionVertexGroup.add(executionVertexMapper.apply(executionVertex));
+            executionVertexGroup.add(executionVertexIdentifierMapper.apply(executionVertex));
         }
         return vertices;
     }
