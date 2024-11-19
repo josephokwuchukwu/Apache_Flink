@@ -708,6 +708,12 @@ public class TaskManagerOptions {
                                                     code(TaskManagerLoadBalanceMode.SLOTS.name()),
                                                     code("TaskManagers")),
                                             text(
+                                                    "The %s mode tries to schedule evenly all tasks based on its' number across all available %s. "
+                                                            + "Note: Currently, enabling this parameter can only achieve the balancing effect of the slot level dimension of %s.",
+                                                    code(TaskManagerLoadBalanceMode.TASKS.name()),
+                                                    code("TaskManagers"),
+                                                    code("DefaultScheduler")),
+                                            text(
                                                     "The %s mode is the default mode without any specified strategy.",
                                                     code(TaskManagerLoadBalanceMode.NONE.name())))
                                     .build());
@@ -753,7 +759,8 @@ public class TaskManagerOptions {
     /** Type of {@link TaskManagerOptions#TASK_MANAGER_LOAD_BALANCE_MODE}. */
     public enum TaskManagerLoadBalanceMode {
         NONE,
-        SLOTS
+        SLOTS,
+        TASKS;
     }
 
     // ------------------------------------------------------------------------
